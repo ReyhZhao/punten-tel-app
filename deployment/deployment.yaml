@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: punten-tel
+  labels:
+    app: punten-tel
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: punten-tel
+  template:
+    metadata:
+      labels:
+        app: punten-tel
+    spec:
+      containers:
+        - name: punten-tel
+          # Replace with your registry/image path, e.g. ghcr.io/<owner>/punten-tel-app:latest
+          image: registry.vels.online/punten/app:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+      # Spread pods across nodes for HA
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: punten-tel

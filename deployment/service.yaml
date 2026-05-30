@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: punten-tel
+  labels:
+    app: punten-tel
+spec:
+  selector:
+    app: punten-tel
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+  type: ClusterIP

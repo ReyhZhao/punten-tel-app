@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: punten-tel
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # Uncomment if using cert-manager for TLS:
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: bunkerweb
+  tls:
+    - hosts:
+        - punten.vels.online    # <-- replace with your domain
+      secretName: punten-tel-tls    # <-- cert-manager will create this, or supply manually
+  rules:
+    - host: punten.vels.online  # <-- replace with your domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: punten-tel
+                port:
+                  name: http
