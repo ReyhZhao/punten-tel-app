@@ -16,9 +16,8 @@ spec:
     spec:
       containers:
         - name: punten-tel
-          # Replace with your registry/image path, e.g. ghcr.io/<owner>/punten-tel-app:latest
-          image: registry.vels.online/punten/app:latest
-          imagePullPolicy: Always
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
               containerPort: 80

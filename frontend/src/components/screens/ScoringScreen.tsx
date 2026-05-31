@@ -59,11 +59,22 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
     const key = uid();
     setFloats((f) => [...f, { key, playerId: selected.id, delta }]);
     setTimeout(() => setFloats((f) => f.filter((x) => x.key !== key)), 900);
+    setAmount('0');
+    const idx = game.players.findIndex((p) => p.id === selected.id);
+    const next = game.players[(idx + 1) % game.players.length];
+    setSelectedId(next.id);
+    if (game.maxScore != null && game.finishRound) {
+      const roundDone = next.id === game.players[0].id;
+      const maxHit = selected.score + delta >= game.maxScore;
+      if (roundDone && (game.pendingFinish || maxHit)) {
+        actions.finishGame(game.id);
+      }
+    }
   };
 
-  const ranked = [...game.players].sort((a, b) =>
-    game.scoring === 'low' ? a.score - b.score : b.score - a.score
-  );
+  const ranked = game.sortPlayers
+    ? [...game.players].sort((a, b) => game.scoring === 'low' ? a.score - b.score : b.score - a.score)
+    : game.players;
   const leaders =
     game.log.length > 0
       ? ranked.filter((p) => p.score === ranked[0].score).map((p) => p.id)

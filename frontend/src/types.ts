@@ -37,6 +37,10 @@ export interface Game {
   scoring: Scoring;
   timerOn: boolean;
   timerSecs: number;
+  maxScore: number | null;
+  finishRound: boolean;
+  pendingFinish: boolean;
+  sortPlayers: boolean;
   players: Player[];
   log: LogEntry[];
   createdAt: number;
@@ -55,6 +59,9 @@ export interface GameDraft {
   scoring: Scoring;
   timerOn: boolean;
   timerSecs: number;
+  maxScore: number | null;
+  finishRound: boolean;
+  sortPlayers: boolean;
   players: Player[];
 }
 

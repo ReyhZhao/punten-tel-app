@@ -1,1 +1,4 @@
-punten-app: {}
+image:
+  repository: registry.vels.online/punten/app
+  tag: latest
+  pullPolicy: Always

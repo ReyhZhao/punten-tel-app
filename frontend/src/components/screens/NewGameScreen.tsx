@@ -18,6 +18,10 @@ export default function NewGameScreen({ theme, actions }: Props) {
   const [scoring, setScoring] = useState<'high' | 'low'>('high');
   const [timerOn, setTimerOn] = useState(false);
   const [timerSecs, setTimerSecs] = useState(60);
+  const [maxScoreOn, setMaxScoreOn] = useState(false);
+  const [maxScoreVal, setMaxScoreVal] = useState('100');
+  const [finishRound, setFinishRound] = useState(true);
+  const [sortPlayers, setSortPlayers] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -247,6 +251,179 @@ export default function NewGameScreen({ theme, actions }: Props) {
           )}
         </div>
 
+        {/* Max score */}
+        <div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '4px 4px 0',
+            }}
+          >
+            <label
+              style={{
+                fontSize: 12.5,
+                fontWeight: 700,
+                letterSpacing: 0.6,
+                textTransform: 'uppercase',
+                color: t.muted,
+              }}
+            >
+              Maximaal aantal punten
+            </label>
+            <button
+              onClick={() => setMaxScoreOn((v) => !v)}
+              style={{
+                border: 'none',
+                cursor: 'pointer',
+                width: 52,
+                height: 31,
+                borderRadius: 16,
+                padding: 2,
+                background: maxScoreOn ? '#34C759' : t.faint,
+                transition: 'background .2s',
+                display: 'flex',
+              }}
+            >
+              <div
+                style={{
+                  width: 27,
+                  height: 27,
+                  borderRadius: '50%',
+                  background: '#fff',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                  transform: maxScoreOn ? 'translateX(21px)' : 'translateX(0)',
+                  transition: 'transform .2s',
+                }}
+              />
+            </button>
+          </div>
+          {maxScoreOn && (
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <input
+                value={maxScoreVal}
+                onChange={(e) => setMaxScoreVal(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                onFocus={(e) => e.target.select()}
+                inputMode="numeric"
+                placeholder="bijv. 100"
+                style={{
+                  width: '100%',
+                  height: 54,
+                  padding: '0 18px',
+                  border: `1px solid ${t.border}`,
+                  borderRadius: 16,
+                  background: t.surface,
+                  color: t.text,
+                  fontSize: 22,
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 700,
+                  outline: 'none',
+                  textAlign: 'center',
+                }}
+              />
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '2px 4px',
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: t.text, fontFamily: 'var(--font-display)' }}>
+                    Ronde afmaken
+                  </div>
+                  <div style={{ fontSize: 12, color: t.muted, marginTop: 1 }}>
+                    Alle spelers krijgen evenveel beurten
+                  </div>
+                </div>
+                <button
+                  onClick={() => setFinishRound((v) => !v)}
+                  style={{
+                    border: 'none',
+                    cursor: 'pointer',
+                    width: 52,
+                    height: 31,
+                    borderRadius: 16,
+                    padding: 2,
+                    background: finishRound ? '#34C759' : t.faint,
+                    transition: 'background .2s',
+                    display: 'flex',
+                    flexShrink: 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 27,
+                      height: 27,
+                      borderRadius: '50%',
+                      background: '#fff',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                      transform: finishRound ? 'translateX(21px)' : 'translateX(0)',
+                      transition: 'transform .2s',
+                    }}
+                  />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Sort players */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '4px 4px 0',
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: 12.5,
+                fontWeight: 700,
+                letterSpacing: 0.6,
+                textTransform: 'uppercase',
+                color: t.muted,
+              }}
+            >
+              Rangschikking op punten
+            </div>
+            <div style={{ fontSize: 12, color: t.muted, marginTop: 2 }}>
+              Spelers automatisch sorteren op score
+            </div>
+          </div>
+          <button
+            onClick={() => setSortPlayers((v) => !v)}
+            style={{
+              border: 'none',
+              cursor: 'pointer',
+              width: 52,
+              height: 31,
+              borderRadius: 16,
+              padding: 2,
+              background: sortPlayers ? '#34C759' : t.faint,
+              transition: 'background .2s',
+              display: 'flex',
+              flexShrink: 0,
+            }}
+          >
+            <div
+              style={{
+                width: 27,
+                height: 27,
+                borderRadius: '50%',
+                background: '#fff',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                transform: sortPlayers ? 'translateX(21px)' : 'translateX(0)',
+                transition: 'transform .2s',
+              }}
+            />
+          </button>
+        </div>
+
         {/* Players */}
         <div>
           <div
@@ -382,7 +559,16 @@ export default function NewGameScreen({ theme, actions }: Props) {
           size="lg"
           disabled={!canStart}
           onClick={() =>
-            actions.createGame({ name: name.trim(), scoring, timerOn, timerSecs, players })
+            actions.createGame({
+              name: name.trim(),
+              scoring,
+              timerOn,
+              timerSecs,
+              maxScore: maxScoreOn ? (parseInt(maxScoreVal, 10) || 100) : null,
+              finishRound,
+              sortPlayers,
+              players,
+            })
           }
         >
           <Icon name="flag" size={20} /> Start spel

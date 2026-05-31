@@ -58,6 +58,10 @@ export function useAppState() {
         scoring: draft.scoring,
         timerOn: draft.timerOn,
         timerSecs: draft.timerSecs,
+        maxScore: draft.maxScore,
+        finishRound: draft.finishRound,
+        sortPlayers: draft.sortPlayers,
+        pendingFinish: false,
         players: draft.players.map((p, i) => ({
           ...p,
           score: 0,
@@ -78,14 +82,31 @@ export function useAppState() {
       }),
 
     applyScore: (gameId: string, playerId: string, delta: number) =>
-      updateGame(gameId, (g) => ({
-        ...g,
-        lastPlayed: Date.now(),
-        players: g.players.map((p) =>
-          p.id === playerId ? { ...p, score: p.score + delta } : p
-        ),
-        log: [...g.log, { id: uid(), playerId, delta, ts: Date.now() }],
-      })),
+      setSt((s) => {
+        let finishNow = false;
+        const updatedGames = s.games.map((g) => {
+          if (g.id !== gameId) return g;
+          const newPlayers = g.players.map((p) =>
+            p.id === playerId ? { ...p, score: p.score + delta } : p
+          );
+          const newLog = [...g.log, { id: uid(), playerId, delta, ts: Date.now() }];
+          let updated: Game = { ...g, lastPlayed: Date.now(), players: newPlayers, log: newLog };
+          const maxScore = g.maxScore ?? null;
+          if (maxScore != null && !g.pendingFinish) {
+            const triggered = newPlayers.some((p) => p.score >= maxScore);
+            if (triggered) {
+              if (!g.finishRound) {
+                updated = { ...updated, finished: true };
+                finishNow = true;
+              } else {
+                updated = { ...updated, pendingFinish: true };
+              }
+            }
+          }
+          return updated;
+        });
+        return { ...s, games: updatedGames, ...(finishNow ? { screen: 'winner' as const } : {}) };
+      }),
 
     undoLog: (gameId: string, logId: string) =>
       updateGame(gameId, (g) => {
@@ -119,6 +140,7 @@ export function useAppState() {
             ? {
                 ...g,
                 finished: false,
+                pendingFinish: false,
                 lastPlayed: Date.now(),
                 players: g.players.map((p) => ({ ...p, score: 0 })),
                 log: [],
