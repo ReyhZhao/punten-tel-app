@@ -1,6 +1,7 @@
 services:
   frontend:
     image: registry.vels.online/punten/app:latest
+    platform: linux/amd64
     build:
       context: ./frontend
       dockerfile: Dockerfile
