@@ -4,6 +4,7 @@ import { relTime } from '../../store';
 import Card from '../ui/Card';
 import Btn from '../ui/Btn';
 import Icon from '../ui/Icon';
+import IconBtn from '../ui/IconBtn';
 import PlayerAvatar from '../ui/PlayerAvatar';
 
 interface Props {
@@ -61,21 +62,7 @@ export default function HomeScreen({ theme, games, actions }: Props) {
             Spellen
           </h1>
         </div>
-        <div
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: 16,
-            background: t.accent,
-            color: t.accentText,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: t.shadow,
-          }}
-        >
-          <Icon name="dice" size={28} />
-        </div>
+        <IconBtn theme={t} name="person" onClick={actions.goPlayers} />
       </div>
 
       {/* Game list */}

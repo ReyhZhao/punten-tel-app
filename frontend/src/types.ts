@@ -4,6 +4,7 @@ export interface SavedPlayer {
   id: string;
   name: string;
   color: string;
+  wins: number;
 }
 
 export interface Theme {
@@ -21,7 +22,7 @@ export interface Theme {
   shadow: string;
   glow: string;
 }
-export type Screen = 'home' | 'new' | 'scoring' | 'winner';
+export type Screen = 'home' | 'new' | 'scoring' | 'winner' | 'players';
 
 export interface Player {
   id: string;
@@ -74,6 +75,7 @@ export interface GameDraft {
 
 export interface Actions {
   goHome: () => void;
+  goPlayers: () => void;
   startNewGame: () => void;
   createGame: (draft: GameDraft) => void;
   openGame: (id: string) => void;

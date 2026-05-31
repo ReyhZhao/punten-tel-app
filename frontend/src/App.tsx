@@ -5,6 +5,7 @@ import HomeScreen from './components/screens/HomeScreen';
 import NewGameScreen from './components/screens/NewGameScreen';
 import ScoringScreen from './components/screens/ScoringScreen';
 import WinnerScreen from './components/screens/WinnerScreen';
+import PlayersScreen from './components/screens/PlayersScreen';
 
 export default function App() {
   const { st, actions } = useAppState();
@@ -12,7 +13,9 @@ export default function App() {
   const current = games.find((g) => g.id === currentId);
 
   let content: React.ReactNode;
-  if (screen === 'new') {
+  if (screen === 'players') {
+    content = <PlayersScreen theme={theme} actions={actions} savedPlayers={st.savedPlayers ?? []} />;
+  } else if (screen === 'new') {
     content = <NewGameScreen theme={theme} actions={actions} savedPlayers={st.savedPlayers ?? []} />;
   } else if (screen === 'scoring' && current) {
     content = <ScoringScreen theme={theme} game={current} actions={actions} />;
