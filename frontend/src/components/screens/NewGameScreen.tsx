@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Theme, Actions, Player } from '../../types';
+import { Theme, Actions, Player, SavedPlayer } from '../../types';
 import { PLAYER_COLORS } from '../../theme';
 import { uid } from '../../store';
 import IconBtn from '../ui/IconBtn';
@@ -10,9 +10,10 @@ import PlayerAvatar from '../ui/PlayerAvatar';
 interface Props {
   theme: Theme;
   actions: Actions;
+  savedPlayers: SavedPlayer[];
 }
 
-export default function NewGameScreen({ theme, actions }: Props) {
+export default function NewGameScreen({ theme, actions, savedPlayers }: Props) {
   const t = theme;
   const [name, setName] = useState('');
   const [scoring, setScoring] = useState<'high' | 'low'>('high');
@@ -24,6 +25,7 @@ export default function NewGameScreen({ theme, actions }: Props) {
   const [sortPlayers, setSortPlayers] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
   const [draft, setDraft] = useState('');
+  const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const addPlayer = () => {
@@ -37,12 +39,29 @@ export default function NewGameScreen({ theme, actions }: Props) {
     inputRef.current?.focus();
   };
 
+  const addSaved = (s: SavedPlayer) => {
+    if (players.length >= 8) return;
+    setPlayers((ps) => [
+      ...ps,
+      { id: uid(), name: s.name, color: PLAYER_COLORS[ps.length % PLAYER_COLORS.length], score: 0 },
+    ]);
+    setDraft('');
+    inputRef.current?.focus();
+  };
+
   const removePlayer = (id: string) =>
     setPlayers((ps) =>
       ps
         .filter((p) => p.id !== id)
         .map((p, i) => ({ ...p, color: PLAYER_COLORS[i % PLAYER_COLORS.length] }))
     );
+
+  const suggestions = savedPlayers.filter(
+    (s) =>
+      !players.find((p) => p.name.toLowerCase() === s.name.toLowerCase()) &&
+      (draft.trim() === '' || s.name.toLowerCase().includes(draft.toLowerCase()))
+  );
+  const showDropdown = focused && suggestions.length > 0;
 
   const canStart = name.trim().length > 0 && players.length >= 2;
 
@@ -496,45 +515,129 @@ export default function NewGameScreen({ theme, actions }: Props) {
             ))}
 
             {players.length < 8 && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  background: t.surface2,
-                  borderRadius: 16,
-                  padding: '6px 6px 6px 14px',
-                }}
-              >
-                <Icon name="person" size={20} style={{ color: t.faint }} />
-                <input
-                  ref={inputRef}
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') addPlayer(); }}
-                  placeholder="Naam speler toevoegen"
+              <div style={{ position: 'relative' }}>
+                <div
                   style={{
-                    flex: 1,
-                    border: 'none',
-                    background: 'transparent',
-                    outline: 'none',
-                    fontSize: 16.5,
-                    color: t.text,
-                    fontFamily: 'var(--font-display)',
-                    fontWeight: 500,
-                    minWidth: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    background: t.surface2,
+                    borderRadius: showDropdown ? '16px 16px 0 0' : 16,
+                    padding: '6px 6px 6px 14px',
+                    border: `1px solid ${showDropdown ? t.border : 'transparent'}`,
+                    borderBottom: showDropdown ? 'none' : undefined,
+                    transition: 'border-radius .15s',
                   }}
-                />
-                <IconBtn
-                  theme={t}
-                  name="plus"
-                  size={38}
-                  iconSize={22}
-                  onClick={addPlayer}
-                  bg={draft.trim() ? t.accent : t.faint}
-                  color={t.accentText}
-                  disabled={!draft.trim()}
-                />
+                >
+                  <Icon name="person" size={20} style={{ color: t.faint }} />
+                  <input
+                    ref={inputRef}
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onFocus={() => setFocused(true)}
+                    onBlur={() => setTimeout(() => setFocused(false), 150)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') addPlayer(); }}
+                    placeholder="Naam speler toevoegen"
+                    style={{
+                      flex: 1,
+                      border: 'none',
+                      background: 'transparent',
+                      outline: 'none',
+                      fontSize: 16.5,
+                      color: t.text,
+                      fontFamily: 'var(--font-display)',
+                      fontWeight: 500,
+                      minWidth: 0,
+                    }}
+                  />
+                  <IconBtn
+                    theme={t}
+                    name="plus"
+                    size={38}
+                    iconSize={22}
+                    onClick={addPlayer}
+                    bg={draft.trim() ? t.accent : t.faint}
+                    color={t.accentText}
+                    disabled={!draft.trim()}
+                  />
+                </div>
+
+                {showDropdown && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      zIndex: 20,
+                      background: t.surface,
+                      border: `1px solid ${t.border}`,
+                      borderTop: 'none',
+                      borderRadius: '0 0 16px 16px',
+                      boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        padding: '6px 14px 4px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        letterSpacing: 0.5,
+                        textTransform: 'uppercase',
+                        color: t.muted,
+                      }}
+                    >
+                      {draft.trim() ? 'Overeenkomsten' : 'Eerder gespeeld'}
+                    </div>
+                    {suggestions.map((s) => (
+                      <button
+                        key={s.id}
+                        onMouseDown={() => addSaved(s)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12,
+                          width: '100%',
+                          padding: '10px 14px',
+                          border: 'none',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = t.surface2)}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <div
+                          style={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: '50%',
+                            background: s.color,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: '#fff',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {s.name[0].toUpperCase()}
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 16,
+                            fontWeight: 500,
+                            color: t.text,
+                            fontFamily: 'var(--font-display)',
+                          }}
+                        >
+                          {s.name}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

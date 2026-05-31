@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AppState, Game, GameDraft } from './types';
+import { AppState, Game, GameDraft, SavedPlayer } from './types';
 import { PLAYER_COLORS } from './theme';
 
 const STORE_KEY = 'pwa-punten-v2';
@@ -28,7 +28,7 @@ function loadState(): AppState {
   } catch {
     // ignore
   }
-  return { games: [], screen: 'home', currentId: null };
+  return { games: [], savedPlayers: [], screen: 'home', currentId: null };
 }
 
 export function useAppState() {
@@ -72,7 +72,15 @@ export function useAppState() {
         lastPlayed: now,
         finished: false,
       };
-      setSt((s) => ({ ...s, games: [game, ...s.games], currentId: id, screen: 'scoring' }));
+      setSt((s) => {
+        const saved: SavedPlayer[] = [...(s.savedPlayers ?? [])];
+        for (const p of game.players) {
+          if (!saved.some((sp) => sp.name.toLowerCase() === p.name.toLowerCase())) {
+            saved.push({ id: uid(), name: p.name, color: p.color });
+          }
+        }
+        return { ...s, games: [game, ...s.games], savedPlayers: saved, currentId: id, screen: 'scoring' };
+      });
     },
 
     openGame: (id: string) =>

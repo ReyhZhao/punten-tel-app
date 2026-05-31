@@ -1,5 +1,11 @@
 export type Scoring = 'high' | 'low';
 
+export interface SavedPlayer {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface Theme {
   dark: boolean;
   bg: string;
@@ -50,6 +56,7 @@ export interface Game {
 
 export interface AppState {
   games: Game[];
+  savedPlayers: SavedPlayer[];
   screen: Screen;
   currentId: string | null;
 }
