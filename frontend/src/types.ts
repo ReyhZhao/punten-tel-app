@@ -55,9 +55,21 @@ export interface Game {
   finished: boolean;
 }
 
+export interface GameProfile {
+  id: string;
+  name: string;
+  scoring: Scoring;
+  timerOn: boolean;
+  timerSecs: number;
+  maxScore: number | null;
+  finishRound: boolean;
+  sortPlayers: boolean;
+}
+
 export interface AppState {
   games: Game[];
   savedPlayers: SavedPlayer[];
+  gameProfiles: GameProfile[];
   screen: Screen;
   currentId: string | null;
 }
@@ -85,4 +97,5 @@ export interface Actions {
   rematch: (gameId: string) => void;
   resetScores: (gameId: string) => void;
   deleteGame: (gameId: string) => void;
+  saveProfile: (profile: GameProfile) => void;
 }

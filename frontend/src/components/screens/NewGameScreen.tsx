@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Theme, Actions, Player, SavedPlayer } from '../../types';
+import { Theme, Actions, Player, SavedPlayer, GameProfile } from '../../types';
 import { PLAYER_COLORS } from '../../theme';
 import { uid } from '../../store';
 import IconBtn from '../ui/IconBtn';
@@ -11,9 +11,10 @@ interface Props {
   theme: Theme;
   actions: Actions;
   savedPlayers: SavedPlayer[];
+  gameProfiles: GameProfile[];
 }
 
-export default function NewGameScreen({ theme, actions, savedPlayers }: Props) {
+export default function NewGameScreen({ theme, actions, savedPlayers, gameProfiles }: Props) {
   const t = theme;
   const [name, setName] = useState('');
   const [scoring, setScoring] = useState<'high' | 'low'>('high');
@@ -26,7 +27,49 @@ export default function NewGameScreen({ theme, actions, savedPlayers }: Props) {
   const [players, setPlayers] = useState<Player[]>([]);
   const [draft, setDraft] = useState('');
   const [focused, setFocused] = useState(false);
+  const [profileFocused, setProfileFocused] = useState(false);
+  const [activeProfile, setActiveProfile] = useState<GameProfile | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const applyProfile = (p: GameProfile) => {
+    setActiveProfile(p);
+    setName(p.name);
+    setScoring(p.scoring);
+    setTimerOn(p.timerOn);
+    setTimerSecs(p.timerSecs);
+    setMaxScoreOn(p.maxScore !== null);
+    setMaxScoreVal(p.maxScore?.toString() ?? '100');
+    setFinishRound(p.finishRound);
+    setSortPlayers(p.sortPlayers);
+  };
+
+  const handleSaveProfile = () => {
+    const profile: GameProfile = {
+      id: uid(),
+      name: name.trim(),
+      scoring,
+      timerOn,
+      timerSecs,
+      maxScore: maxScoreOn ? (parseInt(maxScoreVal, 10) || 100) : null,
+      finishRound,
+      sortPlayers,
+    };
+    actions.saveProfile(profile);
+    setActiveProfile(profile);
+  };
+
+  const profileSuggestions = gameProfiles.filter((p) =>
+    name.trim() === '' || p.name.toLowerCase().includes(name.toLowerCase())
+  );
+  const showProfileDropdown = profileFocused && profileSuggestions.length > 0;
+  const isNewProfile = name.trim() !== '' &&
+    !gameProfiles.find((p) => p.name.toLowerCase() === name.trim().toLowerCase());
+
+  const settingsBadges = [
+    scoring === 'high' ? 'Hoogste wint' : 'Laagste wint',
+    ...(timerOn ? [`${timerSecs}s timer`] : []),
+    ...(maxScoreOn ? [`Max ${parseInt(maxScoreVal) || 100}`] : []),
+  ];
 
   const addPlayer = () => {
     const nm = draft.trim();
@@ -132,7 +175,7 @@ export default function NewGameScreen({ theme, actions, savedPlayers }: Props) {
           gap: 22,
         }}
       >
-        {/* Game name */}
+        {/* Naam / profiel combo */}
         <div>
           <label
             style={{
@@ -145,26 +188,150 @@ export default function NewGameScreen({ theme, actions, savedPlayers }: Props) {
               margin: '0 0 8px 4px',
             }}
           >
-            Naam van het spel
+            Naam / profiel
           </label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="bijv. Spelavond, Rummikub…"
-            style={{
-              width: '100%',
-              height: 54,
-              padding: '0 18px',
-              border: `1px solid ${t.border}`,
-              borderRadius: 16,
-              background: t.surface,
-              color: t.text,
-              fontSize: 18,
-              fontFamily: 'var(--font-display)',
-              fontWeight: 500,
-              outline: 'none',
-            }}
-          />
+          <div style={{ position: 'relative' }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                background: t.surface,
+                border: `1.5px solid ${showProfileDropdown ? t.accent : activeProfile ? '#34C759' : t.border}`,
+                borderRadius: showProfileDropdown ? '16px 16px 0 0' : 16,
+                padding: '0 16px',
+                height: 54,
+                transition: 'border-color .15s, border-radius .15s',
+              }}
+            >
+              <Icon
+                name="spark"
+                size={20}
+                style={{ color: activeProfile ? '#34C759' : t.faint, flexShrink: 0 }}
+              />
+              <input
+                value={name}
+                onChange={(e) => { setName(e.target.value); setActiveProfile(null); }}
+                onFocus={() => setProfileFocused(true)}
+                onBlur={() => setTimeout(() => setProfileFocused(false), 150)}
+                placeholder="Zoek profiel of typ speltype…"
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
+                  fontSize: 18,
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 500,
+                  color: t.text,
+                }}
+              />
+              {activeProfile && (
+                <Icon name="check" size={18} style={{ color: '#34C759', flexShrink: 0 }} />
+              )}
+            </div>
+
+            {showProfileDropdown && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  zIndex: 20,
+                  background: t.surface,
+                  border: `1.5px solid ${t.accent}`,
+                  borderTop: 'none',
+                  borderRadius: '0 0 16px 16px',
+                  boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    padding: '6px 16px 4px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: 0.5,
+                    textTransform: 'uppercase',
+                    color: t.muted,
+                  }}
+                >
+                  Profielen
+                </div>
+                {profileSuggestions.map((p) => (
+                  <button
+                    key={p.id}
+                    onMouseDown={() => applyProfile(p)}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      width: '100%',
+                      padding: '10px 16px',
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = t.surface2)}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <span
+                      style={{
+                        fontSize: 16,
+                        fontWeight: 600,
+                        color: t.text,
+                        fontFamily: 'var(--font-display)',
+                      }}
+                    >
+                      {p.name}
+                    </span>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
+                      {[
+                        p.scoring === 'high' ? 'Hoogste wint' : 'Laagste wint',
+                        ...(p.timerOn ? [`${p.timerSecs}s timer`] : []),
+                        ...(p.maxScore != null ? [`Max ${p.maxScore}`] : []),
+                      ].map((b) => (
+                        <span
+                          key={b}
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: t.muted,
+                            background: t.surface2,
+                            padding: '2px 6px',
+                            borderRadius: 5,
+                          }}
+                        >
+                          {b}
+                        </span>
+                      ))}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {activeProfile && (
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6, paddingLeft: 4 }}>
+              {settingsBadges.map((b) => (
+                <span
+                  key={b}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: t.muted,
+                    background: t.surface2,
+                    padding: '2px 7px',
+                    borderRadius: 6,
+                  }}
+                >
+                  {b}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Scoring */}
@@ -442,6 +609,30 @@ export default function NewGameScreen({ theme, actions, savedPlayers }: Props) {
             />
           </button>
         </div>
+
+        {/* Save as profile */}
+        {isNewProfile && (
+          <button
+            onClick={handleSaveProfile}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 16px',
+              border: `1.5px dashed ${t.border}`,
+              borderRadius: 14,
+              background: 'transparent',
+              cursor: 'pointer',
+              fontFamily: 'var(--font-display)',
+              fontWeight: 600,
+              fontSize: 14,
+              color: t.muted,
+            }}
+          >
+            <Icon name="spark" size={16} style={{ color: t.accent }} />
+            Bewaar "{name.trim()}" als profiel
+          </button>
+        )}
 
         {/* Players */}
         <div>

@@ -16,7 +16,7 @@ export default function App() {
   if (screen === 'players') {
     content = <PlayersScreen theme={theme} actions={actions} savedPlayers={st.savedPlayers ?? []} />;
   } else if (screen === 'new') {
-    content = <NewGameScreen theme={theme} actions={actions} savedPlayers={st.savedPlayers ?? []} />;
+    content = <NewGameScreen theme={theme} actions={actions} savedPlayers={st.savedPlayers ?? []} gameProfiles={st.gameProfiles ?? []} />;
   } else if (screen === 'scoring' && current) {
     content = <ScoringScreen theme={theme} game={current} actions={actions} />;
   } else if (screen === 'winner' && current) {

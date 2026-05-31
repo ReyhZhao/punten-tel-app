@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AppState, Game, GameDraft, SavedPlayer } from './types';
+import { AppState, Game, GameDraft, GameProfile, SavedPlayer } from './types';
 import { PLAYER_COLORS } from './theme';
 
 const STORE_KEY = 'pwa-punten-v2';
@@ -28,7 +28,7 @@ function loadState(): AppState {
   } catch {
     // ignore
   }
-  return { games: [], savedPlayers: [], screen: 'home', currentId: null };
+  return { games: [], savedPlayers: [], gameProfiles: [], screen: 'home', currentId: null };
 }
 
 export function useAppState() {
@@ -196,6 +196,12 @@ export function useAppState() {
         games: s.games.filter((g) => g.id !== gameId),
         screen: 'home',
         currentId: null,
+      })),
+
+    saveProfile: (profile: GameProfile) =>
+      setSt((s) => ({
+        ...s,
+        gameProfiles: [...(s.gameProfiles ?? []), profile],
       })),
   };
 
