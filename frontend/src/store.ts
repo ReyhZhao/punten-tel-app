@@ -28,7 +28,7 @@ function loadState(): AppState {
   } catch {
     // ignore
   }
-  return { games: [], savedPlayers: [], gameProfiles: [], screen: 'home', currentId: null };
+  return { games: [], savedPlayers: [], gameProfiles: [], screen: 'home', currentId: null, keepAwake: false };
 }
 
 export function useAppState() {
@@ -203,6 +203,8 @@ export function useAppState() {
         ...s,
         gameProfiles: [...(s.gameProfiles ?? []), profile],
       })),
+
+    setKeepAwake: (on: boolean) => setSt((s) => ({ ...s, keepAwake: on })),
   };
 
   return { st, actions };

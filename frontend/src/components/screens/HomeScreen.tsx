@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Theme, Game, Actions } from '../../types';
 import { relTime } from '../../store';
 import Card from '../ui/Card';
@@ -6,15 +6,18 @@ import Btn from '../ui/Btn';
 import Icon from '../ui/Icon';
 import IconBtn from '../ui/IconBtn';
 import PlayerAvatar from '../ui/PlayerAvatar';
+import SettingsSheet from '../SettingsSheet';
 
 interface Props {
   theme: Theme;
   games: Game[];
   actions: Actions;
+  keepAwake: boolean;
 }
 
-export default function HomeScreen({ theme, games, actions }: Props) {
+export default function HomeScreen({ theme, games, actions, keepAwake }: Props) {
   const t = theme;
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const sorted = [...games].sort((a, b) => b.lastPlayed - a.lastPlayed);
 
   const leaderOf = (g: Game) => {
@@ -26,7 +29,7 @@ export default function HomeScreen({ theme, games, actions }: Props) {
   };
 
   return (
-    <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: t.bg }}>
+    <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: t.bg, position: 'relative' }}>
       {/* Header */}
       <div
         style={{
@@ -62,7 +65,10 @@ export default function HomeScreen({ theme, games, actions }: Props) {
             Spellen
           </h1>
         </div>
-        <IconBtn theme={t} name="person" onClick={actions.goPlayers} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <IconBtn theme={t} name="gear" onClick={() => setSettingsOpen(true)} />
+          <IconBtn theme={t} name="person" onClick={actions.goPlayers} />
+        </div>
       </div>
 
       {/* Game list */}
@@ -261,6 +267,14 @@ export default function HomeScreen({ theme, games, actions }: Props) {
           <Icon name="plus" size={22} /> Nieuw spel
         </Btn>
       </div>
+
+      <SettingsSheet
+        theme={t}
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        keepAwake={keepAwake}
+        onKeepAwakeChange={actions.setKeepAwake}
+      />
     </div>
   );
 }

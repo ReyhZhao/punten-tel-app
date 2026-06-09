@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAppState } from './store';
+import { useWakeLock } from './hooks/useWakeLock';
 import { theme } from './theme';
 import HomeScreen from './components/screens/HomeScreen';
 import NewGameScreen from './components/screens/NewGameScreen';
@@ -12,6 +13,8 @@ export default function App() {
   const { games, screen, currentId } = st;
   const current = games.find((g) => g.id === currentId);
 
+  useWakeLock(!!st.keepAwake);
+
   let content: React.ReactNode;
   if (screen === 'players') {
     content = <PlayersScreen theme={theme} actions={actions} savedPlayers={st.savedPlayers ?? []} />;
@@ -22,7 +25,7 @@ export default function App() {
   } else if (screen === 'winner' && current) {
     content = <WinnerScreen theme={theme} game={current} actions={actions} />;
   } else {
-    content = <HomeScreen theme={theme} games={games} actions={actions} />;
+    content = <HomeScreen theme={theme} games={games} actions={actions} keepAwake={!!st.keepAwake} />;
   }
 
   return <>{content}</>;

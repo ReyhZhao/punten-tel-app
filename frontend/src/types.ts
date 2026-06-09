@@ -72,6 +72,7 @@ export interface AppState {
   gameProfiles: GameProfile[];
   screen: Screen;
   currentId: string | null;
+  keepAwake: boolean;
 }
 
 export interface GameDraft {
@@ -98,4 +99,5 @@ export interface Actions {
   resetScores: (gameId: string) => void;
   deleteGame: (gameId: string) => void;
   saveProfile: (profile: GameProfile) => void;
+  setKeepAwake: (on: boolean) => void;
 }
