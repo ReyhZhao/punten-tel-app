@@ -4,7 +4,7 @@ export type IconName =
   | 'plus' | 'minus' | 'back' | 'chevR' | 'chevD' | 'x' | 'check'
   | 'trophy' | 'clock' | 'undo' | 'trash' | 'ellipsis' | 'dice' | 'flag'
   | 'play' | 'pause' | 'reset' | 'up' | 'down' | 'person' | 'grip' | 'spark' | 'list'
-  | 'gear' | 'sun';
+  | 'gear' | 'sun' | 'download' | 'share';
 
 interface IconProps {
   name: IconName;
@@ -47,6 +47,8 @@ export default function Icon({ name, size = 24, strokeWidth = 2.2, style = {} }:
     list: <><path d="M8 7h11M8 12h11M8 17h11" {...p} /><circle cx="4.5" cy="7" r="1.2" fill="currentColor" stroke="none" /><circle cx="4.5" cy="12" r="1.2" fill="currentColor" stroke="none" /><circle cx="4.5" cy="17" r="1.2" fill="currentColor" stroke="none" /></>,
     gear: <><circle cx="12" cy="12" r="3.2" {...p} /><path d="M12 2.5l1.4 2.3 2.6-.6.3 2.7 2.4 1.2-1.2 2.4 1.2 2.4-2.4 1.2-.3 2.7-2.6-.6L12 21.5l-1.4-2.3-2.6.6-.3-2.7-2.4-1.2 1.2-2.4-1.2-2.4 2.4-1.2.3-2.7 2.6.6z" {...p} /></>,
     sun: <><circle cx="12" cy="12" r="4" {...p} /><path d="M12 2v2.5M12 19.5V22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2 12h2.5M19.5 12H22M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" {...p} /></>,
+    download: <><path d="M12 3v11M7.5 9.5L12 14l4.5-4.5" {...p} /><path d="M5 20h14" {...p} /></>,
+    share: <><path d="M12 15V4M8.5 7.5L12 4l3.5 3.5" {...p} /><path d="M7 11H5.5A1.5 1.5 0 004 12.5v6A1.5 1.5 0 005.5 20h13a1.5 1.5 0 001.5-1.5v-6A1.5 1.5 0 0018.5 11H17" {...p} /></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: 'block', ...style }}>

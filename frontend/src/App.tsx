@@ -1,12 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppState } from './store';
 import { useWakeLock } from './hooks/useWakeLock';
+import { isStandalone, hintSeen, markHintSeen } from './pwa';
 import { theme } from './theme';
 import HomeScreen from './components/screens/HomeScreen';
 import NewGameScreen from './components/screens/NewGameScreen';
 import ScoringScreen from './components/screens/ScoringScreen';
 import WinnerScreen from './components/screens/WinnerScreen';
 import PlayersScreen from './components/screens/PlayersScreen';
+import InstallPrompt from './components/InstallPrompt';
+import InstallGuide from './components/InstallGuide';
+
+type InstallView = 'none' | 'prompt' | 'guide';
 
 export default function App() {
   const { st, actions } = useAppState();
@@ -14,6 +19,14 @@ export default function App() {
   const current = games.find((g) => g.id === currentId);
 
   useWakeLock(!!st.keepAwake);
+
+  // Toon de installatiemelding eenmalig bij het eerste bezoek (niet als de app
+  // al als PWA draait).
+  const [installView, setInstallView] = useState<InstallView>(() =>
+    !isStandalone() && !hintSeen() ? 'prompt' : 'none'
+  );
+  const dismissPrompt = () => { markHintSeen(); setInstallView('none'); };
+  const openGuide = () => { markHintSeen(); setInstallView('guide'); };
 
   let content: React.ReactNode;
   if (screen === 'players') {
@@ -25,8 +38,18 @@ export default function App() {
   } else if (screen === 'winner' && current) {
     content = <WinnerScreen theme={theme} game={current} actions={actions} />;
   } else {
-    content = <HomeScreen theme={theme} games={games} actions={actions} keepAwake={!!st.keepAwake} />;
+    content = <HomeScreen theme={theme} games={games} actions={actions} keepAwake={!!st.keepAwake} onShowInstall={openGuide} />;
   }
 
-  return <>{content}</>;
+  return (
+    <>
+      {content}
+      {installView === 'prompt' && (
+        <InstallPrompt theme={theme} onMoreInfo={openGuide} onClose={dismissPrompt} />
+      )}
+      {installView === 'guide' && (
+        <InstallGuide theme={theme} onClose={() => setInstallView('none')} />
+      )}
+    </>
+  );
 }

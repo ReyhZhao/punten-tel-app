@@ -1,5 +1,6 @@
 import React from 'react';
 import { Theme } from '../types';
+import { isStandalone } from '../pwa';
 import Icon from './ui/Icon';
 
 interface Props {
@@ -8,11 +9,12 @@ interface Props {
   onClose: () => void;
   keepAwake: boolean;
   onKeepAwakeChange: (on: boolean) => void;
+  onInstall: () => void;
 }
 
 const wakeLockSupported = typeof navigator !== 'undefined' && 'wakeLock' in navigator;
 
-export default function SettingsSheet({ theme, open, onClose, keepAwake, onKeepAwakeChange }: Props) {
+export default function SettingsSheet({ theme, open, onClose, keepAwake, onKeepAwakeChange, onInstall }: Props) {
   const t = theme;
   if (!open) return null;
 
@@ -121,6 +123,56 @@ export default function SettingsSheet({ theme, open, onClose, keepAwake, onKeepA
               />
             </button>
           </div>
+
+          {!isStandalone() && (
+            <button
+              onClick={onInstall}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 14,
+                width: '100%',
+                padding: '16px 18px',
+                border: 'none',
+                borderTop: `1px solid ${t.sep}`,
+                background: 'transparent',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  background: t.surface2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: t.accent,
+                  flexShrink: 0,
+                }}
+              >
+                <Icon name="download" size={22} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: t.text,
+                    fontFamily: 'var(--font-display)',
+                  }}
+                >
+                  App installeren
+                </div>
+                <div style={{ fontSize: 12.5, color: t.muted, marginTop: 2 }}>
+                  Zet Puntenteller op je beginscherm
+                </div>
+              </div>
+              <Icon name="chevR" size={20} style={{ color: t.faint, flexShrink: 0 }} />
+            </button>
+          )}
         </div>
 
         <button

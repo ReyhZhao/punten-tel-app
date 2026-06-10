@@ -13,9 +13,10 @@ interface Props {
   games: Game[];
   actions: Actions;
   keepAwake: boolean;
+  onShowInstall: () => void;
 }
 
-export default function HomeScreen({ theme, games, actions, keepAwake }: Props) {
+export default function HomeScreen({ theme, games, actions, keepAwake, onShowInstall }: Props) {
   const t = theme;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const sorted = [...games].sort((a, b) => b.lastPlayed - a.lastPlayed);
@@ -274,6 +275,7 @@ export default function HomeScreen({ theme, games, actions, keepAwake }: Props) 
         onClose={() => setSettingsOpen(false)}
         keepAwake={keepAwake}
         onKeepAwakeChange={actions.setKeepAwake}
+        onInstall={() => { setSettingsOpen(false); onShowInstall(); }}
       />
     </div>
   );
