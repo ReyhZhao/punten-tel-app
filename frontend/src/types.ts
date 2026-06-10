@@ -12,7 +12,10 @@ export interface SavedPlayer {
   id: string;
   name: string;
   color: string;
+  /** Totaal aantal gewonnen spellen, over alle speltypes heen. */
   wins: number;
+  /** Aantal overwinningen per spelprofiel, gesleuteld op profiel-id. */
+  profileWins?: Record<string, number>;
 }
 
 export interface Theme {
@@ -49,6 +52,8 @@ export interface LogEntry {
 export interface Game {
   id: string;
   name: string;
+  /** Het spelprofiel waaruit dit spel is aangemaakt, of null bij een los spel. */
+  profileId: string | null;
   scoring: Scoring;
   timerOn: boolean;
   timerSecs: number;
@@ -86,6 +91,7 @@ export interface AppState {
 
 export interface GameDraft {
   name: string;
+  profileId: string | null;
   scoring: Scoring;
   timerOn: boolean;
   timerSecs: number;

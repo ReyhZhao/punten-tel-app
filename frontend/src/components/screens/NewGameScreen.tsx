@@ -108,6 +108,13 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
 
   const canStart = name.trim().length > 0 && players.length >= 2;
 
+  // Koppel het spel aan een profiel (voor winst-statistiek per speltype): het
+  // actieve profiel, of anders een bestaand profiel met dezelfde naam.
+  const resolvedProfileId =
+    activeProfile?.id ??
+    gameProfiles.find((p) => p.name.toLowerCase() === name.trim().toLowerCase())?.id ??
+    null;
+
   const SegBtn = ({ value, label, icon }: { value: 'high' | 'low'; label: string; icon: 'up' | 'down' }) => {
     const active = scoring === value;
     return (
@@ -883,6 +890,7 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
           onClick={() =>
             actions.createGame({
               name: name.trim(),
+              profileId: resolvedProfileId,
               scoring,
               timerOn,
               timerSecs,

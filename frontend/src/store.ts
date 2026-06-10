@@ -36,6 +36,7 @@ function loadState(): AppState {
         ...parsed,
         games: (parsed.games ?? []).map((g) => ({
           ...g,
+          profileId: g.profileId ?? null,
           endMode: migrateEndMode(g),
           endTurnsLeft: g.endTurnsLeft ?? null,
         })),
@@ -65,12 +66,17 @@ export function useAppState() {
   const updateGame = (id: string, fn: (g: Game) => Game) =>
     setSt((s) => ({ ...s, games: s.games.map((g) => (g.id === id ? fn(g) : g)) }));
 
-  const addWin = (saved: SavedPlayer[], winnerName: string): SavedPlayer[] =>
-    saved.map((sp) =>
-      sp.name.toLowerCase() === winnerName.toLowerCase()
-        ? { ...sp, wins: (sp.wins ?? 0) + 1 }
-        : sp
-    );
+  const addWin = (
+    saved: SavedPlayer[],
+    winnerName: string,
+    profileId: string | null
+  ): SavedPlayer[] =>
+    saved.map((sp) => {
+      if (sp.name.toLowerCase() !== winnerName.toLowerCase()) return sp;
+      const profileWins = { ...(sp.profileWins ?? {}) };
+      if (profileId) profileWins[profileId] = (profileWins[profileId] ?? 0) + 1;
+      return { ...sp, wins: (sp.wins ?? 0) + 1, profileWins };
+    });
 
   const gameWinner = (g: Game): string | null => {
     if (!g.players.length) return null;
@@ -90,6 +96,7 @@ export function useAppState() {
       const game: Game = {
         id,
         name: draft.name,
+        profileId: draft.profileId,
         scoring: draft.scoring,
         timerOn: draft.timerOn,
         timerSecs: draft.timerSecs,
@@ -128,6 +135,7 @@ export function useAppState() {
       setSt((s) => {
         let finishNow = false;
         let winnerName: string | null = null;
+        let finishedProfileId: string | null = null;
         const updatedGames = s.games.map((g) => {
           if (g.id !== gameId) return g;
           const newPlayers = g.players.map((p) =>
@@ -141,6 +149,7 @@ export function useAppState() {
             updated = { ...updated, finished: true, endTurnsLeft: null };
             finishNow = true;
             winnerName = gameWinner(updated);
+            finishedProfileId = g.profileId;
           };
 
           if (maxScore != null) {
@@ -170,7 +179,7 @@ export function useAppState() {
           return updated;
         });
         const saved = finishNow && winnerName
-          ? addWin(s.savedPlayers ?? [], winnerName)
+          ? addWin(s.savedPlayers ?? [], winnerName, finishedProfileId)
           : (s.savedPlayers ?? []);
         return { ...s, games: updatedGames, savedPlayers: saved, ...(finishNow ? { screen: 'winner' as const } : {}) };
       }),
@@ -193,7 +202,7 @@ export function useAppState() {
       setSt((s) => {
         const game = s.games.find((g) => g.id === gameId);
         const winner = game ? gameWinner(game) : null;
-        const saved = winner ? addWin(s.savedPlayers ?? [], winner) : (s.savedPlayers ?? []);
+        const saved = winner ? addWin(s.savedPlayers ?? [], winner, game?.profileId ?? null) : (s.savedPlayers ?? []);
         return {
           ...s,
           screen: 'winner',

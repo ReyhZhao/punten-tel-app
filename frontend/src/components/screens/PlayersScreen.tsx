@@ -1,5 +1,5 @@
-import React from 'react';
-import { Theme, Actions, SavedPlayer } from '../../types';
+import React, { useState } from 'react';
+import { Theme, Actions, SavedPlayer, GameProfile } from '../../types';
 import IconBtn from '../ui/IconBtn';
 import Icon from '../ui/Icon';
 
@@ -7,17 +7,25 @@ interface Props {
   theme: Theme;
   actions: Actions;
   savedPlayers: SavedPlayer[];
+  gameProfiles: GameProfile[];
 }
 
-export default function PlayersScreen({ theme, actions, savedPlayers }: Props) {
+// 'total' = alle spellen samen, anders een profiel-id.
+type Scope = 'total' | string;
+
+export default function PlayersScreen({ theme, actions, savedPlayers, gameProfiles }: Props) {
   const t = theme;
+  const [scope, setScope] = useState<Scope>('total');
+
+  const winsFor = (p: SavedPlayer) =>
+    scope === 'total' ? (p.wins ?? 0) : (p.profileWins?.[scope] ?? 0);
 
   const sorted = [...savedPlayers].sort((a, b) => {
-    const wDiff = (b.wins ?? 0) - (a.wins ?? 0);
+    const wDiff = winsFor(b) - winsFor(a);
     return wDiff !== 0 ? wDiff : a.name.localeCompare(b.name, 'nl');
   });
 
-  const topWins = sorted[0]?.wins ?? 0;
+  const topWins = sorted.length ? winsFor(sorted[0]) : 0;
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: t.bg }}>
@@ -45,6 +53,47 @@ export default function PlayersScreen({ theme, actions, savedPlayers }: Props) {
         </div>
         <div style={{ width: 44 }} />
       </div>
+
+      {/* Filter per speltype */}
+      {gameProfiles.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            overflowX: 'auto',
+            padding: '6px 18px 10px',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+          }}
+        >
+          {[{ id: 'total', name: 'Totaal' }, ...gameProfiles].map((opt) => {
+            const active = scope === opt.id;
+            return (
+              <button
+                key={opt.id}
+                onClick={() => setScope(opt.id)}
+                style={{
+                  flexShrink: 0,
+                  height: 36,
+                  padding: '0 16px',
+                  border: `1px solid ${active ? t.accent : t.border}`,
+                  borderRadius: 18,
+                  cursor: 'pointer',
+                  background: active ? t.accent : t.surface,
+                  color: active ? t.accentText : t.text,
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  whiteSpace: 'nowrap',
+                  transition: 'background .15s, border-color .15s',
+                }}
+              >
+                {opt.name}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Content */}
       <div style={{ flex: 1, padding: '8px 18px 40px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -98,7 +147,7 @@ export default function PlayersScreen({ theme, actions, savedPlayers }: Props) {
             </div>
 
             {sorted.map((p, i) => {
-              const wins = p.wins ?? 0;
+              const wins = winsFor(p);
               const isLeader = wins > 0 && wins === topWins;
               return (
                 <div
