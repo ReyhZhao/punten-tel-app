@@ -1,4 +1,4 @@
 image:
   repository: registry.vels.online/punten/app
-  tag: v1.0.1
+  tag: v1.1.0
   pullPolicy: Always
