@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Theme, Actions, Player, SavedPlayer, GameProfile } from '../../types';
+import { Theme, Actions, Player, SavedPlayer, GameProfile, EndMode } from '../../types';
 import { PLAYER_COLORS } from '../../theme';
 import { uid } from '../../store';
 import IconBtn from '../ui/IconBtn';
@@ -22,7 +22,7 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
   const [timerSecs, setTimerSecs] = useState(60);
   const [maxScoreOn, setMaxScoreOn] = useState(false);
   const [maxScoreVal, setMaxScoreVal] = useState('100');
-  const [finishRound, setFinishRound] = useState(true);
+  const [endMode, setEndMode] = useState<EndMode>('round');
   const [sortPlayers, setSortPlayers] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
   const [draft, setDraft] = useState('');
@@ -39,7 +39,7 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
     setTimerSecs(p.timerSecs);
     setMaxScoreOn(p.maxScore !== null);
     setMaxScoreVal(p.maxScore?.toString() ?? '100');
-    setFinishRound(p.finishRound);
+    setEndMode(p.endMode);
     setSortPlayers(p.sortPlayers);
   };
 
@@ -51,7 +51,7 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
       timerOn,
       timerSecs,
       maxScore: maxScoreOn ? (parseInt(maxScoreVal, 10) || 100) : null,
-      finishRound,
+      endMode,
       sortPlayers,
     };
     actions.saveProfile(profile);
@@ -508,49 +508,77 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
                   textAlign: 'center',
                 }}
               />
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '2px 4px',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: t.text, fontFamily: 'var(--font-display)' }}>
-                    Ronde afmaken
-                  </div>
-                  <div style={{ fontSize: 12, color: t.muted, marginTop: 1 }}>
-                    Alle spelers krijgen evenveel beurten
-                  </div>
-                </div>
-                <button
-                  onClick={() => setFinishRound((v) => !v)}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 2 }}>
+                <div
                   style={{
-                    border: 'none',
-                    cursor: 'pointer',
-                    width: 52,
-                    height: 31,
-                    borderRadius: 16,
-                    padding: 2,
-                    background: finishRound ? '#34C759' : t.faint,
-                    transition: 'background .2s',
-                    display: 'flex',
-                    flexShrink: 0,
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    letterSpacing: 0.6,
+                    textTransform: 'uppercase',
+                    color: t.muted,
+                    paddingLeft: 4,
                   }}
                 >
-                  <div
-                    style={{
-                      width: 27,
-                      height: 27,
-                      borderRadius: '50%',
-                      background: '#fff',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-                      transform: finishRound ? 'translateX(21px)' : 'translateX(0)',
-                      transition: 'transform .2s',
-                    }}
-                  />
-                </button>
+                  Als de max bereikt is
+                </div>
+                {([
+                  { mode: 'immediate', title: 'Direct stoppen', desc: 'Spel eindigt zodra de max bereikt is' },
+                  { mode: 'round', title: 'Ronde afmaken', desc: 'Resterende spelers in de ronde spelen hun beurt nog' },
+                  { mode: 'extraTurn', title: 'Iedereen nog één beurt', desc: 'Alle overige spelers krijgen nog één beurt (bv. Duizendbommen)' },
+                ] as { mode: EndMode; title: string; desc: string }[]).map((opt) => {
+                  const active = endMode === opt.mode;
+                  return (
+                    <button
+                      key={opt.mode}
+                      onClick={() => setEndMode(opt.mode)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        textAlign: 'left',
+                        width: '100%',
+                        padding: '12px 14px',
+                        borderRadius: 14,
+                        cursor: 'pointer',
+                        background: active ? t.surface : t.surface2,
+                        border: `1.5px solid ${active ? t.accent : 'transparent'}`,
+                        transition: 'border-color .15s, background .15s',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: 11,
+                          flexShrink: 0,
+                          border: `2px solid ${active ? t.accent : t.faint}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        {active && (
+                          <div style={{ width: 10, height: 10, borderRadius: 5, background: t.accent }} />
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 600,
+                            color: t.text,
+                            fontFamily: 'var(--font-display)',
+                          }}
+                        >
+                          {opt.title}
+                        </div>
+                        <div style={{ fontSize: 12, color: t.muted, marginTop: 1, lineHeight: 1.3 }}>
+                          {opt.desc}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -859,7 +887,7 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
               timerOn,
               timerSecs,
               maxScore: maxScoreOn ? (parseInt(maxScoreVal, 10) || 100) : null,
-              finishRound,
+              endMode,
               sortPlayers,
               players,
             })

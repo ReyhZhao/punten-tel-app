@@ -1,5 +1,13 @@
 export type Scoring = 'high' | 'low';
 
+/**
+ * Wat er gebeurt zodra de maximale score bereikt is:
+ * - 'immediate'  : spel stopt direct
+ * - 'round'      : huidige ronde afmaken (spelers ná de trigger spelen hun beurt nog)
+ * - 'extraTurn'  : alle overige spelers krijgen nog precies één beurt (bv. Duizendbommen)
+ */
+export type EndMode = 'immediate' | 'round' | 'extraTurn';
+
 export interface SavedPlayer {
   id: string;
   name: string;
@@ -45,8 +53,9 @@ export interface Game {
   timerOn: boolean;
   timerSecs: number;
   maxScore: number | null;
-  finishRound: boolean;
-  pendingFinish: boolean;
+  endMode: EndMode;
+  /** Resterend aantal beurten voordat het spel eindigt, nadat de max bereikt is. null = nog niet getriggerd. */
+  endTurnsLeft: number | null;
   sortPlayers: boolean;
   players: Player[];
   log: LogEntry[];
@@ -62,7 +71,7 @@ export interface GameProfile {
   timerOn: boolean;
   timerSecs: number;
   maxScore: number | null;
-  finishRound: boolean;
+  endMode: EndMode;
   sortPlayers: boolean;
 }
 
@@ -81,7 +90,7 @@ export interface GameDraft {
   timerOn: boolean;
   timerSecs: number;
   maxScore: number | null;
-  finishRound: boolean;
+  endMode: EndMode;
   sortPlayers: boolean;
   players: Player[];
 }

@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
-import { AppState, Game, GameDraft, GameProfile, SavedPlayer } from './types';
+import { AppState, EndMode, Game, GameDraft, GameProfile, SavedPlayer } from './types';
 import { PLAYER_COLORS } from './theme';
+
+// Oude opslag gebruikte een boolean `finishRound`; vertaal die naar de nieuwe EndMode.
+function migrateEndMode(o: { endMode?: EndMode; finishRound?: boolean }): EndMode {
+  if (o.endMode === 'immediate' || o.endMode === 'round' || o.endMode === 'extraTurn') return o.endMode;
+  return o.finishRound ? 'round' : 'immediate';
+}
 
 const STORE_KEY = 'pwa-punten-v2';
 let _seq = 0;
@@ -24,7 +30,21 @@ export function relTime(ts: number): string {
 function loadState(): AppState {
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw) as AppState;
+      return {
+        ...parsed,
+        games: (parsed.games ?? []).map((g) => ({
+          ...g,
+          endMode: migrateEndMode(g),
+          endTurnsLeft: g.endTurnsLeft ?? null,
+        })),
+        gameProfiles: (parsed.gameProfiles ?? []).map((p) => ({
+          ...p,
+          endMode: migrateEndMode(p),
+        })),
+      };
+    }
   } catch {
     // ignore
   }
@@ -74,9 +94,9 @@ export function useAppState() {
         timerOn: draft.timerOn,
         timerSecs: draft.timerSecs,
         maxScore: draft.maxScore,
-        finishRound: draft.finishRound,
+        endMode: draft.endMode,
         sortPlayers: draft.sortPlayers,
-        pendingFinish: false,
+        endTurnsLeft: null,
         players: draft.players.map((p, i) => ({
           ...p,
           score: 0,
@@ -116,16 +136,35 @@ export function useAppState() {
           const newLog = [...g.log, { id: uid(), playerId, delta, ts: Date.now() }];
           let updated: Game = { ...g, lastPlayed: Date.now(), players: newPlayers, log: newLog };
           const maxScore = g.maxScore ?? null;
-          if (maxScore != null && !g.pendingFinish) {
-            const triggered = newPlayers.some((p) => p.score >= maxScore);
-            if (triggered) {
-              if (!g.finishRound) {
-                updated = { ...updated, finished: true };
-                finishNow = true;
-                winnerName = gameWinner(updated);
-              } else {
-                updated = { ...updated, pendingFinish: true };
+
+          const finish = () => {
+            updated = { ...updated, finished: true, endTurnsLeft: null };
+            finishNow = true;
+            winnerName = gameWinner(updated);
+          };
+
+          if (maxScore != null) {
+            if (g.endTurnsLeft == null) {
+              // Nog niet getriggerd: kijk of de max nu bereikt wordt.
+              const triggered = newPlayers.some((p) => p.score >= maxScore);
+              if (triggered) {
+                if (g.endMode === 'immediate') {
+                  finish();
+                } else {
+                  const n = g.players.length;
+                  const triggerIdx = g.players.findIndex((p) => p.id === playerId);
+                  // 'round': alleen spelers ná de trigger maken de ronde af.
+                  // 'extraTurn': alle overige spelers krijgen nog één beurt.
+                  const left = g.endMode === 'extraTurn' ? n - 1 : n - 1 - triggerIdx;
+                  if (left <= 0) finish();
+                  else updated = { ...updated, endTurnsLeft: left };
+                }
               }
+            } else {
+              // Al getriggerd: deze beurt telt mee in de aftelling.
+              const left = g.endTurnsLeft - 1;
+              if (left <= 0) finish();
+              else updated = { ...updated, endTurnsLeft: left };
             }
           }
           return updated;
@@ -174,7 +213,7 @@ export function useAppState() {
             ? {
                 ...g,
                 finished: false,
-                pendingFinish: false,
+                endTurnsLeft: null,
                 lastPlayed: Date.now(),
                 players: g.players.map((p) => ({ ...p, score: 0 })),
                 log: [],

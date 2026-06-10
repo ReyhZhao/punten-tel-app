@@ -63,13 +63,8 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
     const idx = game.players.findIndex((p) => p.id === selected.id);
     const next = game.players[(idx + 1) % game.players.length];
     setSelectedId(next.id);
-    if (game.maxScore != null && game.finishRound) {
-      const roundDone = next.id === game.players[0].id;
-      const maxHit = selected.score + delta >= game.maxScore;
-      if (roundDone && (game.pendingFinish || maxHit)) {
-        actions.finishGame(game.id);
-      }
-    }
+    // Het einde van het spel (max bereikt, ronde afmaken, extra beurten) wordt
+    // centraal in applyScore afgehandeld; die zet zo nodig het winnaarsscherm.
   };
 
   const ranked = game.sortPlayers
