@@ -11,7 +11,7 @@ spec:
   tls:
     - hosts:
         - punten.vels.online    # <-- replace with your domain
-      secretName: punten-tel-tls    # <-- cert-manager will create this, or supply manually
+      #secretName: punten-tel-tls    # <-- cert-manager will create this, or supply manually
   rules:
     - host: punten.vels.online  # <-- replace with your domain
       http:
