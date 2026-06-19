@@ -58,6 +58,8 @@ export interface Game {
   timerOn: boolean;
   timerSecs: number;
   maxScore: number | null;
+  /** Maximaal aantal rondes (een ronde = elke speler één score-actie). null = geen limiet. */
+  maxRounds: number | null;
   endMode: EndMode;
   /** Resterend aantal beurten voordat het spel eindigt, nadat de max bereikt is. null = nog niet getriggerd. */
   endTurnsLeft: number | null;
@@ -76,6 +78,7 @@ export interface GameProfile {
   timerOn: boolean;
   timerSecs: number;
   maxScore: number | null;
+  maxRounds: number | null;
   endMode: EndMode;
   sortPlayers: boolean;
 }
@@ -96,6 +99,7 @@ export interface GameDraft {
   timerOn: boolean;
   timerSecs: number;
   maxScore: number | null;
+  maxRounds: number | null;
   endMode: EndMode;
   sortPlayers: boolean;
   players: Player[];

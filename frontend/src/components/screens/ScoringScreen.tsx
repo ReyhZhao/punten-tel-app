@@ -244,6 +244,11 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
           </div>
           <div style={{ fontSize: 12, color: t.muted, marginTop: 1 }}>
             {game.scoring === 'low' ? 'Laagste wint' : 'Hoogste wint'}
+            {game.maxRounds != null &&
+              ` · Ronde ${Math.min(
+                Math.floor(game.log.length / game.players.length) + 1,
+                game.maxRounds
+              )}/${game.maxRounds}`}
           </div>
         </div>
         <IconBtn theme={t} name="list" onClick={() => setHistoryOpen(true)} />

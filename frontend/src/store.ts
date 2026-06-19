@@ -39,10 +39,12 @@ function loadState(): AppState {
           profileId: g.profileId ?? null,
           endMode: migrateEndMode(g),
           endTurnsLeft: g.endTurnsLeft ?? null,
+          maxRounds: g.maxRounds ?? null,
         })),
         gameProfiles: (parsed.gameProfiles ?? []).map((p) => ({
           ...p,
           endMode: migrateEndMode(p),
+          maxRounds: p.maxRounds ?? null,
         })),
       };
     }
@@ -101,6 +103,7 @@ export function useAppState() {
         timerOn: draft.timerOn,
         timerSecs: draft.timerSecs,
         maxScore: draft.maxScore,
+        maxRounds: draft.maxRounds,
         endMode: draft.endMode,
         sortPlayers: draft.sortPlayers,
         endTurnsLeft: null,
@@ -175,6 +178,14 @@ export function useAppState() {
               if (left <= 0) finish();
               else updated = { ...updated, endTurnsLeft: left };
             }
+          }
+
+          // Harde cap op het aantal rondes: één ronde = elke speler één
+          // score-actie. Eindigt het spel zodra de cap bereikt is, los van de
+          // max-punten-logica (wat het eerst komt, wint).
+          const maxRounds = g.maxRounds ?? null;
+          if (!finishNow && maxRounds != null && newLog.length >= maxRounds * g.players.length) {
+            finish();
           }
           return updated;
         });

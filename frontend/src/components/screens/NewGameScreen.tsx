@@ -22,6 +22,8 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
   const [timerSecs, setTimerSecs] = useState(60);
   const [maxScoreOn, setMaxScoreOn] = useState(false);
   const [maxScoreVal, setMaxScoreVal] = useState('100');
+  const [maxRoundsOn, setMaxRoundsOn] = useState(false);
+  const [maxRoundsVal, setMaxRoundsVal] = useState('10');
   const [endMode, setEndMode] = useState<EndMode>('round');
   const [sortPlayers, setSortPlayers] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -39,6 +41,8 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
     setTimerSecs(p.timerSecs);
     setMaxScoreOn(p.maxScore !== null);
     setMaxScoreVal(p.maxScore?.toString() ?? '100');
+    setMaxRoundsOn(p.maxRounds !== null);
+    setMaxRoundsVal(p.maxRounds?.toString() ?? '10');
     setEndMode(p.endMode);
     setSortPlayers(p.sortPlayers);
   };
@@ -51,6 +55,7 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
       timerOn,
       timerSecs,
       maxScore: maxScoreOn ? (parseInt(maxScoreVal, 10) || 100) : null,
+      maxRounds: maxRoundsOn ? (parseInt(maxRoundsVal, 10) || 10) : null,
       endMode,
       sortPlayers,
     };
@@ -69,6 +74,7 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
     scoring === 'high' ? 'Hoogste wint' : 'Laagste wint',
     ...(timerOn ? [`${timerSecs}s timer`] : []),
     ...(maxScoreOn ? [`Max ${parseInt(maxScoreVal) || 100}`] : []),
+    ...(maxRoundsOn ? [`${parseInt(maxRoundsVal) || 10} rondes`] : []),
   ];
 
   const addPlayer = () => {
@@ -298,6 +304,7 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
                         p.scoring === 'high' ? 'Hoogste wint' : 'Laagste wint',
                         ...(p.timerOn ? [`${p.timerSecs}s timer`] : []),
                         ...(p.maxScore != null ? [`Max ${p.maxScore}`] : []),
+                        ...(p.maxRounds != null ? [`${p.maxRounds} rondes`] : []),
                       ].map((b) => (
                         <span
                           key={b}
@@ -586,6 +593,85 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
                     </button>
                   );
                 })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Max rondes */}
+        <div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '4px 4px 0',
+            }}
+          >
+            <label
+              style={{
+                fontSize: 12.5,
+                fontWeight: 700,
+                letterSpacing: 0.6,
+                textTransform: 'uppercase',
+                color: t.muted,
+              }}
+            >
+              Maximaal aantal rondes
+            </label>
+            <button
+              onClick={() => setMaxRoundsOn((v) => !v)}
+              style={{
+                border: 'none',
+                cursor: 'pointer',
+                width: 52,
+                height: 31,
+                borderRadius: 16,
+                padding: 2,
+                background: maxRoundsOn ? '#34C759' : t.faint,
+                transition: 'background .2s',
+                display: 'flex',
+              }}
+            >
+              <div
+                style={{
+                  width: 27,
+                  height: 27,
+                  borderRadius: '50%',
+                  background: '#fff',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                  transform: maxRoundsOn ? 'translateX(21px)' : 'translateX(0)',
+                  transition: 'transform .2s',
+                }}
+              />
+            </button>
+          </div>
+          {maxRoundsOn && (
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <input
+                value={maxRoundsVal}
+                onChange={(e) => setMaxRoundsVal(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+                onFocus={(e) => e.target.select()}
+                inputMode="numeric"
+                placeholder="bijv. 10"
+                style={{
+                  width: '100%',
+                  height: 54,
+                  padding: '0 18px',
+                  border: `1px solid ${t.border}`,
+                  borderRadius: 16,
+                  background: t.surface,
+                  color: t.text,
+                  fontSize: 22,
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 700,
+                  outline: 'none',
+                  textAlign: 'center',
+                }}
+              />
+              <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.35, paddingLeft: 4 }}>
+                Eén ronde = elke speler één keer aan de beurt. Het spel stopt zodra
+                iedereen dit aantal rondes heeft gespeeld.
               </div>
             </div>
           )}
@@ -895,6 +981,7 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
               timerOn,
               timerSecs,
               maxScore: maxScoreOn ? (parseInt(maxScoreVal, 10) || 100) : null,
+              maxRounds: maxRoundsOn ? (parseInt(maxRoundsVal, 10) || 10) : null,
               endMode,
               sortPlayers,
               players,
