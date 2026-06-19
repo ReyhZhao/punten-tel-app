@@ -75,6 +75,12 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
       ? ranked.filter((p) => p.score === ranked[0].score).map((p) => p.id)
       : [];
 
+  // Max bereikt, maar het spel maakt de ronde / extra beurten nog af.
+  const finishingRound = game.endTurnsLeft != null;
+  const turnsLeft = game.endTurnsLeft ?? 0;
+  const reachedMax = (score: number) => game.maxScore != null && score >= game.maxScore;
+  const MAX_COLOR = '#F4B400';
+
   const controlCard = (
     <div
       style={{
@@ -269,6 +275,89 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
           gap: 12,
         }}
       >
+        {finishingRound && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              background: t.dark ? 'rgba(244,180,0,0.14)' : '#FFF7E0',
+              border: `1px solid ${t.dark ? 'rgba(244,180,0,0.4)' : '#F0D27A'}`,
+              borderRadius: 16,
+              padding: '12px 14px',
+              animation: 'pop .25s ease',
+            }}
+          >
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 11,
+                flexShrink: 0,
+                background: MAX_COLOR,
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Icon name="flag" size={20} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 700,
+                  fontSize: 15,
+                  color: t.text,
+                }}
+              >
+                Maximum bereikt
+              </div>
+              <div style={{ fontSize: 12.5, color: t.muted, marginTop: 1, lineHeight: 1.3 }}>
+                {game.endMode === 'extraTurn'
+                  ? 'Iedereen krijgt nog één beurt'
+                  : 'De ronde wordt nog afgemaakt'}
+              </div>
+            </div>
+            <div
+              style={{
+                flexShrink: 0,
+                textAlign: 'center',
+                minWidth: 54,
+                background: t.surface,
+                borderRadius: 12,
+                padding: '6px 10px',
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 700,
+                  fontSize: 20,
+                  color: t.text,
+                  lineHeight: 1,
+                  fontVariantNumeric: 'tabular-nums',
+                }}
+              >
+                {turnsLeft}
+              </div>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: t.muted,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.4,
+                  fontWeight: 700,
+                  marginTop: 2,
+                }}
+              >
+                {turnsLeft === 1 ? 'beurt' : 'beurten'}
+              </div>
+            </div>
+          </div>
+        )}
+
         {game.timerOn && turnPlayer && (
           <TurnTimer
             theme={t}
@@ -286,6 +375,7 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
           {ranked.map((p) => {
             const isSel = p.id === selectedId;
             const isLeader = leaders.includes(p.id);
+            const isMaxed = finishingRound && reachedMax(p.score);
             const myFloats = floats.filter((f) => f.playerId === p.id);
             return (
               <div
@@ -300,8 +390,12 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
                   borderRadius: 18,
                   padding: '12px 16px 12px 14px',
                   cursor: 'pointer',
-                  border: `2px solid ${isSel ? p.color : 'transparent'}`,
-                  boxShadow: isSel ? `0 4px 18px ${p.color}33` : t.shadow,
+                  border: `2px solid ${isSel ? p.color : isMaxed ? MAX_COLOR : 'transparent'}`,
+                  boxShadow: isSel
+                    ? `0 4px 18px ${p.color}33`
+                    : isMaxed
+                    ? `0 4px 18px ${MAX_COLOR}33`
+                    : t.shadow,
                   transition: 'border-color .15s, box-shadow .15s',
                 }}
               >
@@ -343,7 +437,21 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
                   >
                     {p.name}
                   </div>
-                  {isSel && (
+                  {isMaxed ? (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: MAX_COLOR,
+                        letterSpacing: 0.3,
+                      }}
+                    >
+                      <Icon name="flag" size={12} style={{ color: MAX_COLOR }} /> Max bereikt
+                    </div>
+                  ) : isSel ? (
                     <div
                       style={{
                         fontSize: 12,
@@ -354,7 +462,7 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
                     >
                       geselecteerd
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 <div style={{ position: 'relative' }}>
