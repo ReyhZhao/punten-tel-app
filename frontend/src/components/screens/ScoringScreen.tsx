@@ -53,7 +53,9 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
   const selected = game.players.find((p) => p.id === selectedId) ?? game.players[0];
 
   const apply = (sign: number) => {
-    if (!selected || amt === 0) return;
+    // 0 punten is toegestaan: zo kan een speler die aan de beurt is geweest
+    // toch een beurt registreren, zodat de rondetelling blijft kloppen.
+    if (!selected) return;
     const delta = sign * amt;
     actions.applyScore(game.id, selected.id, delta);
     const key = uid();
