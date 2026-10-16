@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Theme } from '../types';
 import { isStandalone } from '../pwa';
 import { exportForIOS } from '../exportData';
+import { useSyncApi } from '../useSync';
+import AccountSheet from './AccountSheet';
 import Icon, { IconName } from './ui/Icon';
 
 interface Props {
@@ -18,6 +20,8 @@ const wakeLockSupported = typeof navigator !== 'undefined' && 'wakeLock' in navi
 export default function SettingsSheet({ theme, open, onClose, keepAwake, onKeepAwakeChange, onInstall }: Props) {
   const t = theme;
   const [exportStatus, setExportStatus] = useState<string | null>(null);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const sync = useSyncApi();
   if (!open) return null;
 
   const handleExport = async () => {
@@ -66,12 +70,22 @@ export default function SettingsSheet({ theme, open, onClose, keepAwake, onKeepA
             Instellingen
           </div>
 
+          <ActionRow
+            theme={t}
+            icon="person"
+            title={sync.account?.displayName ?? 'Account'}
+            subtitle={sync.account ? `Ingelogd als ${sync.account.email}` : 'Spellen delen met medespelers en op al je toestellen'}
+            onClick={() => setAccountOpen(true)}
+            first
+          />
+
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 14,
               padding: '16px 18px',
+              borderTop: `1px solid ${t.sep}`,
               opacity: wakeLockSupported ? 1 : 0.5,
             }}
           >
@@ -174,6 +188,7 @@ export default function SettingsSheet({ theme, open, onClose, keepAwake, onKeepA
           Klaar
         </button>
       </div>
+      {accountOpen && <AccountSheet theme={t} onClose={() => setAccountOpen(false)} />}
     </div>
   );
 }
@@ -184,9 +199,11 @@ interface ActionRowProps {
   title: string;
   subtitle: string;
   onClick: () => void;
+  /** Eerste rij onder de titel: geen extra scheidingslijn. */
+  first?: boolean;
 }
 
-function ActionRow({ theme: t, icon, title, subtitle, onClick }: ActionRowProps) {
+function ActionRow({ theme: t, icon, title, subtitle, onClick, first }: ActionRowProps) {
   return (
     <button
       onClick={onClick}
@@ -197,7 +214,7 @@ function ActionRow({ theme: t, icon, title, subtitle, onClick }: ActionRowProps)
         width: '100%',
         padding: '16px 18px',
         border: 'none',
-        borderTop: `1px solid ${t.sep}`,
+        borderTop: first ? 'none' : `1px solid ${t.sep}`,
         background: 'transparent',
         cursor: 'pointer',
         textAlign: 'left',

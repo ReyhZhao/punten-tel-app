@@ -1,6 +1,6 @@
 import React from 'react';
 import { Theme, Game } from '../../types';
-import { relTime } from '../../store';
+import { activeLog, relTime } from '../../store';
 import PlayerAvatar from '../ui/PlayerAvatar';
 import IconBtn from '../ui/IconBtn';
 import Icon from '../ui/Icon';
@@ -11,13 +11,15 @@ interface HistorySheetProps {
   onClose: () => void;
   game: Game;
   onUndo: (logId: string) => void;
+  /** Alleen wie mag scoren, mag boekingen ongedaan maken. */
+  canUndo?: boolean;
 }
 
-export default function HistorySheet({ theme, open, onClose, game, onUndo }: HistorySheetProps) {
+export default function HistorySheet({ theme, open, onClose, game, onUndo, canUndo = true }: HistorySheetProps) {
   const t = theme;
   if (!open) return null;
   const byId = Object.fromEntries(game.players.map((p) => [p.id, p]));
-  const entries = [...game.log].reverse();
+  const entries = [...activeLog(game)].reverse();
 
   return (
     <div
@@ -152,7 +154,7 @@ export default function HistorySheet({ theme, open, onClose, game, onUndo }: His
                     >
                       {pos ? '+' : ''}{e.delta}
                     </span>
-                    <IconBtn
+                    {canUndo && <IconBtn
                       theme={t}
                       name="undo"
                       size={36}
@@ -160,7 +162,7 @@ export default function HistorySheet({ theme, open, onClose, game, onUndo }: His
                       bg="transparent"
                       color={t.muted}
                       onClick={() => onUndo(e.id)}
-                    />
+                    />}
                   </div>
                 );
               })}

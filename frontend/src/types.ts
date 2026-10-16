@@ -16,6 +16,8 @@ export interface SavedPlayer {
   wins: number;
   /** Aantal overwinningen per spelprofiel, gesleuteld op profiel-id. */
   profileWins?: Record<string, number>;
+  /** Account (backend) van deze speler, na opzoeken op e-mail; voor sneller uitnodigen. */
+  accountId?: string | null;
 }
 
 export interface Theme {
@@ -39,7 +41,11 @@ export interface Player {
   id: string;
   name: string;
   color: string;
+  /** Afgeleid uit de actieve boekingen (zie `recompute` in store.ts). */
   score: number;
+  /** Gekoppeld account: uitgenodigde speler (ADR-0003). */
+  accountId?: string | null;
+  updatedAt?: number;
 }
 
 export interface LogEntry {
@@ -47,6 +53,8 @@ export interface LogEntry {
   playerId: string;
   delta: number;
   ts: number;
+  /** Ingetrokken (undo/reset). Boekingen blijven als tombstone bewaard voor de sync. */
+  undoneAt?: number | null;
 }
 
 export interface Game {
@@ -67,8 +75,15 @@ export interface Game {
   players: Player[];
   log: LogEntry[];
   createdAt: number;
+  /** Laatste wijziging; dient ook als `updatedAt` voor de sync. */
   lastPlayed: number;
   finished: boolean;
+  /** Account van de eigenaar (backend). null = van jezelf, nog niet gesynct. */
+  ownerId?: string | null;
+  /** Uitgenodigde spelers mogen ook scores bijhouden. */
+  participantsCanScore?: boolean;
+  /** Verwijderd (tombstone). */
+  deletedAt?: number | null;
 }
 
 export interface GameProfile {
@@ -81,6 +96,20 @@ export interface GameProfile {
   maxRounds: number | null;
   endMode: EndMode;
   sortPlayers: boolean;
+  updatedAt?: number;
+  deletedAt?: number | null;
+  /** Eigenaar; profielen van anderen komen mee met een gedeeld spel (alleen-lezen). */
+  ownerId?: string | null;
+}
+
+/** Wat nog naar de backend moet, en tot waar we bij zijn (sync.ts). */
+export interface SyncState {
+  cursor: number | null;
+  /** Lokaal gewijzigd, nog niet verstuurd: id → teller die bij elke wijziging ophoogt. */
+  dirtyGames: Record<string, number>;
+  dirtyProfiles: Record<string, number>;
+  /** Schermnamen van accounts (eigenaren, gekoppelde spelers). */
+  accountNames: Record<string, string>;
 }
 
 export interface AppState {
@@ -90,6 +119,7 @@ export interface AppState {
   screen: Screen;
   currentId: string | null;
   keepAwake: boolean;
+  sync: SyncState;
 }
 
 export interface GameDraft {
@@ -103,6 +133,7 @@ export interface GameDraft {
   endMode: EndMode;
   sortPlayers: boolean;
   players: Player[];
+  participantsCanScore?: boolean;
 }
 
 export interface Actions {
@@ -119,4 +150,6 @@ export interface Actions {
   deleteGame: (gameId: string) => void;
   saveProfile: (profile: GameProfile) => void;
   setKeepAwake: (on: boolean) => void;
+  /** Onthoud het account bij een bewaarde speler (na opzoeken op e-mail). */
+  rememberAccount: (playerName: string, accountId: string | null) => void;
 }

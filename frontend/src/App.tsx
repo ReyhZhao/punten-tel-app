@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAppState } from './store';
+import { SyncContext, useSync } from './useSync';
 import { useWakeLock } from './hooks/useWakeLock';
 import { isStandalone, hintSeen, markHintSeen } from './pwa';
 import { theme } from './theme';
@@ -14,8 +15,11 @@ import InstallGuide from './components/InstallGuide';
 type InstallView = 'none' | 'prompt' | 'guide';
 
 export default function App() {
-  const { st, actions } = useAppState();
-  const { games, screen, currentId } = st;
+  const { st, setSt, actions } = useAppState();
+  const sync = useSync(st, setSt);
+  const { screen, currentId } = st;
+  // Verwijderde spellen blijven als tombstone bewaard (voor de sync), maar niet zichtbaar.
+  const games = st.games.filter((g) => !g.deletedAt);
   const current = games.find((g) => g.id === currentId);
 
   useWakeLock(!!st.keepAwake);
@@ -42,7 +46,7 @@ export default function App() {
   }
 
   return (
-    <>
+    <SyncContext.Provider value={sync}>
       {content}
       {installView === 'prompt' && (
         <InstallPrompt theme={theme} onMoreInfo={openGuide} onClose={dismissPrompt} />
@@ -50,6 +54,6 @@ export default function App() {
       {installView === 'guide' && (
         <InstallGuide theme={theme} onClose={() => setInstallView('none')} />
       )}
-    </>
+    </SyncContext.Provider>
   );
 }

@@ -5,6 +5,8 @@ import PlayerAvatar from '../ui/PlayerAvatar';
 import Icon from '../ui/Icon';
 import IconBtn from '../ui/IconBtn';
 import Btn from '../ui/Btn';
+import { isOwner } from '../../store';
+import { useSyncApi } from '../../useSync';
 
 interface Props {
   theme: Theme;
@@ -14,6 +16,7 @@ interface Props {
 
 export default function WinnerScreen({ theme, game, actions }: Props) {
   const t = theme;
+  const owner = isOwner(game, useSyncApi().accountId);
   const ranked = [...game.players].sort((a, b) =>
     game.scoring === 'low' ? a.score - b.score : b.score - a.score
   );
@@ -263,9 +266,12 @@ export default function WinnerScreen({ theme, game, actions }: Props) {
           zIndex: 31,
         }}
       >
-        <Btn theme={t} full size="lg" onClick={() => actions.rematch(game.id)}>
-          <Icon name="reset" size={20} /> Opnieuw spelen
-        </Btn>
+        {/* Opnieuw spelen maakt een nieuw spel; dat doet de eigenaar. */}
+        {owner && (
+          <Btn theme={t} full size="lg" onClick={() => actions.rematch(game.id)}>
+            <Icon name="reset" size={20} /> Opnieuw spelen
+          </Btn>
+        )}
         <Btn theme={t} full size="md" variant="soft" onClick={actions.goHome}>
           Terug naar spellen
         </Btn>

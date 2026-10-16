@@ -6,6 +6,8 @@ import IconBtn from '../ui/IconBtn';
 import Icon from '../ui/Icon';
 import Btn from '../ui/Btn';
 import PlayerAvatar from '../ui/PlayerAvatar';
+import InviteSheet from '../InviteSheet';
+import { useSyncApi } from '../../useSync';
 
 interface Props {
   theme: Theme;
@@ -32,6 +34,15 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
   const [profileFocused, setProfileFocused] = useState(false);
   const [activeProfile, setActiveProfile] = useState<GameProfile | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const sync = useSyncApi();
+  const signedIn = !!sync.account;
+  /** Id van de speler die uitgenodigd wordt (sheet). */
+  const [inviting, setInviting] = useState<string | null>(null);
+  const [participantsCanScore, setParticipantsCanScore] = useState(false);
+  const anyInvited = signedIn && players.some((p) => p.accountId);
+  /** Eerder uitgenodigd? Dan direct weer met dat account (alleen met een account). */
+  const knownAccount = (name: string) =>
+    signedIn ? savedPlayers.find((sp) => sp.name.toLowerCase() === name.toLowerCase())?.accountId ?? null : null;
 
   const applyProfile = (p: GameProfile) => {
     setActiveProfile(p);
@@ -82,7 +93,7 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
     if (!nm || players.length >= 8) return;
     setPlayers((ps) => [
       ...ps,
-      { id: uid(), name: nm, color: PLAYER_COLORS[ps.length % PLAYER_COLORS.length], score: 0 },
+      { id: uid(), name: nm, color: PLAYER_COLORS[ps.length % PLAYER_COLORS.length], score: 0, accountId: knownAccount(nm) },
     ]);
     setDraft('');
     inputRef.current?.focus();
@@ -92,7 +103,7 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
     if (players.length >= 8) return;
     setPlayers((ps) => [
       ...ps,
-      { id: uid(), name: s.name, color: PLAYER_COLORS[ps.length % PLAYER_COLORS.length], score: 0 },
+      { id: uid(), name: s.name, color: PLAYER_COLORS[ps.length % PLAYER_COLORS.length], score: 0, accountId: knownAccount(s.name) },
     ]);
     setDraft('');
     inputRef.current?.focus();
@@ -813,7 +824,23 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
                   }}
                 >
                   {p.name}
+                  {signedIn && p.accountId && (
+                    <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#34C759', fontFamily: 'inherit' }}>
+                      Uitgenodigd
+                    </span>
+                  )}
                 </span>
+                {signedIn && (
+                  <IconBtn
+                    theme={t}
+                    name={p.accountId ? 'check' : 'share'}
+                    size={36}
+                    iconSize={18}
+                    onClick={() => setInviting(p.id)}
+                    bg="transparent"
+                    color={p.accountId ? '#34C759' : t.muted}
+                  />
+                )}
                 <IconBtn
                   theme={t}
                   name="trash"
@@ -954,7 +981,53 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
             )}
           </div>
         </div>
+
+        {/* Deelnemers laten scoren (alleen als er iemand is uitgenodigd) */}
+        {anyInvited && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: t.muted }}>
+                Deelnemers mogen scores bijhouden
+              </div>
+              <div style={{ fontSize: 13, color: t.muted, marginTop: 2 }}>
+                Uitgenodigde spelers kunnen dan ook punten boeken
+              </div>
+            </div>
+            <button
+              onClick={() => setParticipantsCanScore((v) => !v)}
+              aria-pressed={participantsCanScore}
+              style={{
+                border: 'none', cursor: 'pointer', width: 52, height: 31, borderRadius: 16, padding: 2,
+                background: participantsCanScore ? '#34C759' : t.faint, transition: 'background .2s', display: 'flex',
+              }}
+            >
+              <div
+                style={{
+                  width: 27, height: 27, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                  transform: participantsCanScore ? 'translateX(21px)' : 'translateX(0)', transition: 'transform .2s',
+                }}
+              />
+            </button>
+          </div>
+        )}
       </div>
+
+      {inviting && (() => {
+        const p = players.find((x) => x.id === inviting);
+        if (!p) return null;
+        return (
+          <InviteSheet
+            theme={t}
+            playerName={p.name}
+            accountId={p.accountId}
+            onClose={() => setInviting(null)}
+            onChange={(accountId) => {
+              setPlayers((ps) => ps.map((x) => (x.id === p.id ? { ...x, accountId } : x)));
+              actions.rememberAccount(p.name, accountId);
+            }}
+          />
+        );
+      })()}
 
       {/* Fixed bottom bar */}
       <div
@@ -984,7 +1057,8 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
               maxRounds: maxRoundsOn ? (parseInt(maxRoundsVal, 10) || 10) : null,
               endMode,
               sortPlayers,
-              players,
+              players: signedIn ? players : players.map((p) => ({ ...p, accountId: null })),
+              participantsCanScore: anyInvited && participantsCanScore,
             })
           }
         >

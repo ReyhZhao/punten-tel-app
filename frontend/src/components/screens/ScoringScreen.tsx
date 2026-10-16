@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Theme, Game, Actions } from '../../types';
-import { uid } from '../../store';
+import { activeLog, canScore, isOwner, uid } from '../../store';
+import { useSyncApi } from '../../useSync';
 import Icon from '../ui/Icon';
 import IconBtn from '../ui/IconBtn';
 import PlayerAvatar from '../ui/PlayerAvatar';
@@ -22,6 +23,10 @@ interface Props {
 
 export default function ScoringScreen({ theme, game, actions }: Props) {
   const t = theme;
+  const sync = useSyncApi();
+  const owner = isOwner(game, sync.accountId);
+  const mayScore = canScore(game, sync.accountId);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
   const [amount, setAmount] = useState('1');
   const [selectedId, setSelectedId] = useState<string | null>(game.players[0]?.id ?? null);
   const [floats, setFloats] = useState<FloatEntry[]>([]);
@@ -73,7 +78,7 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
     ? [...game.players].sort((a, b) => game.scoring === 'low' ? a.score - b.score : b.score - a.score)
     : game.players;
   const leaders =
-    game.log.length > 0
+    activeLog(game).length > 0
       ? ranked.filter((p) => p.score === ranked[0].score).map((p) => p.id)
       : [];
 
@@ -254,7 +259,7 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
             {game.scoring === 'low' ? 'Laagste wint' : 'Hoogste wint'}
             {game.maxRounds != null &&
               ` · Ronde ${Math.min(
-                Math.floor(game.log.length / game.players.length) + 1,
+                Math.floor(activeLog(game).length / game.players.length) + 1,
                 game.maxRounds
               )}/${game.maxRounds}`}
           </div>
@@ -264,7 +269,32 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
       </div>
 
       {/* Control bar (top) */}
-      <div style={{ padding: '2px 16px 10px' }}>{controlCard}</div>
+      {mayScore ? (
+        <div style={{ padding: '2px 16px 10px' }}>{controlCard}</div>
+      ) : (
+        // Gedeeld spel waarin je niet mag scoren: alleen meekijken.
+        <div style={{ padding: '2px 16px 10px' }}>
+          <div
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12, background: t.surface, borderRadius: 22,
+              border: `1px solid ${t.border}`, boxShadow: t.shadow, padding: '12px 14px',
+            }}
+          >
+            <div style={{ fontSize: 22 }} aria-hidden>👀</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 16, color: t.text }}>
+                Alleen bekijken
+              </div>
+              <div style={{ fontSize: 12.5, color: t.muted, marginTop: 1 }}>
+                {sync.accountName(game.ownerId) ?? 'De eigenaar'} houdt de scores bij. De stand wordt vanzelf bijgewerkt.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {leaveError && (
+        <div style={{ padding: '0 20px 8px', fontSize: 13, color: '#FF453A' }}>{leaveError}</div>
+      )}
 
       {/* Scrollable player list */}
       <div
@@ -360,7 +390,7 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
           </div>
         )}
 
-        {game.timerOn && turnPlayer && (
+        {mayScore && game.timerOn && turnPlayer && (
           <TurnTimer
             theme={t}
             game={game}
@@ -375,14 +405,14 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
           {ranked.map((p) => {
-            const isSel = p.id === selectedId;
+            const isSel = mayScore && p.id === selectedId;
             const isLeader = leaders.includes(p.id);
             const isMaxed = finishingRound && reachedMax(p.score);
             const myFloats = floats.filter((f) => f.playerId === p.id);
             return (
               <div
                 key={p.id}
-                onClick={() => setSelectedId(p.id)}
+                onClick={() => mayScore && setSelectedId(p.id)}
                 style={{
                   position: 'relative',
                   display: 'flex',
@@ -515,6 +545,7 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
         onClose={() => setHistoryOpen(false)}
         game={game}
         onUndo={(id) => actions.undoLog(game.id, id)}
+        canUndo={mayScore}
       />
       <ActionSheet
         theme={t}
@@ -522,27 +553,39 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
         onClose={() => setMenuOpen(false)}
         title={game.name}
         actions={[
-          {
+          ...(mayScore ? [{
             label: 'Beëindig spel & toon winnaar',
-            icon: 'trophy',
+            icon: 'trophy' as const,
             onClick: () => actions.finishGame(game.id),
-          },
+          }] : []),
           {
             label: 'Historie bekijken',
             icon: 'list',
             onClick: () => setHistoryOpen(true),
           },
-          {
-            label: 'Scores resetten',
-            icon: 'reset',
-            onClick: () => actions.resetScores(game.id),
-          },
-          {
-            label: 'Spel verwijderen',
-            icon: 'trash',
-            danger: true,
-            onClick: () => actions.deleteGame(game.id),
-          },
+          ...(owner ? [
+            {
+              label: 'Scores resetten',
+              icon: 'reset' as const,
+              onClick: () => actions.resetScores(game.id),
+            },
+            {
+              label: 'Spel verwijderen',
+              icon: 'trash' as const,
+              danger: true,
+              onClick: () => actions.deleteGame(game.id),
+            },
+          ] : [
+            {
+              // Deelnemer: jezelf uit het gedeelde spel halen.
+              label: 'Spel verlaten',
+              icon: 'x' as const,
+              danger: true,
+              onClick: () => {
+                sync.leave(game.id).catch((e) => setLeaveError(e instanceof Error ? e.message : String(e)));
+              },
+            },
+          ]),
         ]}
       />
     </div>

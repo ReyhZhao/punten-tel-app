@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Theme, Game, Actions } from '../../types';
-import { relTime } from '../../store';
+import { activeLog, isOwner, relTime } from '../../store';
+import { useSyncApi } from '../../useSync';
 import Card from '../ui/Card';
 import Btn from '../ui/Btn';
 import Icon from '../ui/Icon';
@@ -19,6 +20,7 @@ interface Props {
 export default function HomeScreen({ theme, games, actions, keepAwake, onShowInstall }: Props) {
   const t = theme;
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const sync = useSyncApi();
   const sorted = [...games].sort((a, b) => b.lastPlayed - a.lastPlayed);
 
   const leaderOf = (g: Game) => {
@@ -188,12 +190,16 @@ export default function HomeScreen({ theme, games, actions, keepAwake, onShowIns
                       }}
                     >
                       <Icon
-                        name={g.scoring === 'low' ? 'down' : 'up'}
+                        name={!isOwner(g, sync.accountId) ? 'person' : g.scoring === 'low' ? 'down' : 'up'}
                         size={15}
                         strokeWidth={2.4}
                         style={{ color: t.accent }}
                       />
-                      <span>{g.scoring === 'low' ? 'Laagste wint' : 'Hoogste wint'}</span>
+                      <span>
+                        {!isOwner(g, sync.accountId)
+                          ? `Gedeeld door ${sync.accountName(g.ownerId) ?? 'een medespeler'}`
+                          : g.scoring === 'low' ? 'Laagste wint' : 'Hoogste wint'}
+                      </span>
                       <span style={{ color: t.faint }}>·</span>
                       <span>{relTime(g.lastPlayed)}</span>
                     </div>
@@ -229,7 +235,7 @@ export default function HomeScreen({ theme, games, actions, keepAwake, onShowIns
                     </span>
                   )}
                 </div>
-                {leader && g.log.length > 0 ? (
+                {leader && activeLog(g).length > 0 ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 7, color: t.text }}>
                     <Icon name="trophy" size={16} style={{ color: '#F4B400' }} />
                     <span style={{ fontSize: 14, fontWeight: 600 }}>{leader.name}</span>
