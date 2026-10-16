@@ -33,14 +33,16 @@ Het gewenste gedrag staat in de PWA (`frontend/`) en in
 Nog nodig:
 
 - [ ] Fredoka-font bundelen (OFL-licentie) en registreren via `UIAppFonts`; `Theme.display` daarop laten wijzen
-- [ ] App-icoon 1024×1024 zonder transparantie (vanaf `frontend/public/pwa-icon.svg`)
+- [x] App-icoon 1024×1024 zonder transparantie, gegenereerd uit `frontend/public/pwa-icon.svg`
+- [ ] Optioneel: donkere en getinte varianten van het app-icoon (iOS 18+)
 - [x] Haptics bij +/− en bij het einde van het spel
 - [ ] Haptics bij het einde van de timer
 - [x] Export uit de PWA (Instellingen → Exporteren naar iOS-app) en import in de iOS-app (deelmenu of bestandskiezer), zie `PWAImport.swift`
 
 ## Fase 2 — App Store
 
-- [ ] Apple Developer-account, team-id in het project, App Store Connect-record
+- [x] Team-id in het project
+- [ ] App Store Connect-record
 - [ ] Privacybeleid-URL (lokale data; straks ook account- en sync-data)
 - [ ] Screenshots (6,9"), beschrijving (NL/EN), leeftijdsclassificatie
 - [ ] TestFlight-beta

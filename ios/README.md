@@ -33,8 +33,20 @@ open Puntenteller.xcodeproj                 # ⌘R draait de app, ⌘U de tests 
 cd PuntentellerKit && swift test            # snel, zonder simulator
 ```
 
-Voor een build op een echt toestel of voor TestFlight stel je je team in bij
-*Signing & Capabilities* (`DEVELOPMENT_TEAM` is nog leeg).
+Signing staat op automatisch met team `W38CK4LB5F`; aanpassen kan bij
+*Signing & Capabilities*.
+
+## App-icoon
+
+Het icoon komt uit `frontend/public/pwa-icon.svg`, zodat web en iOS hetzelfde
+icoon hebben. Na een wijziging aan dat SVG-bestand genereer je het opnieuw:
+
+```sh
+swift ios/scripts/generate-app-icon.swift   # vanuit de repo-root
+```
+
+Het script maakt een vierkante PNG van 1024×1024 zonder transparantie (eis van
+de App Store; iOS rondt de hoeken zelf af). Xcode maakt de andere formaten.
 
 ## Releasen
 
