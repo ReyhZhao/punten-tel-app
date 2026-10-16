@@ -100,6 +100,14 @@ struct BottomBar<Content: View>: View {
 }
 
 extension View {
+    /// Hoofdknop in een `Form`: de oranje knop zonder de witte rij eromheen.
+    func formPrimaryButton() -> some View {
+        self
+            .buttonStyle(PrimaryButtonStyle(height: 50))
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+    }
+
     /// Kaart-stijl: wit vlak, rand, zachte schaduw.
     func card(radius: CGFloat = Theme.Radius.card) -> some View {
         // Schaduw alleen op de kaartvorm, niet op de inhoud.

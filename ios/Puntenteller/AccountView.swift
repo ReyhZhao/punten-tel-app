@@ -91,12 +91,13 @@ private struct SignInFlow: View {
         }
         Section {
             Button(action: send) {
-                HStack {
+                HStack(spacing: 8) {
+                    if busy { ProgressView().tint(Theme.accentText) }
                     Text(needsName ? "Account aanmaken" : "Stuur code")
-                    if busy { Spacer(); ProgressView() }
                 }
             }
-            .disabled(trimmedEmail.isEmpty || (needsName && displayName.trimmingCharacters(in: .whitespaces).isEmpty))
+            .formPrimaryButton()
+            .disabled(busy || trimmedEmail.isEmpty || (needsName && displayName.trimmingCharacters(in: .whitespaces).isEmpty))
         }
     }
 
@@ -119,12 +120,15 @@ private struct SignInFlow: View {
         }
         Section {
             Button(action: verify) {
-                HStack {
+                HStack(spacing: 8) {
+                    if busy { ProgressView().tint(Theme.accentText) }
                     Text("Bevestigen")
-                    if busy { Spacer(); ProgressView() }
                 }
             }
-            .disabled(code.count != 6)
+            .formPrimaryButton()
+            .disabled(busy || code.count != 6)
+        }
+        Section {
             Button("Nieuwe code sturen", action: send)
             Button("Ander e-mailadres") {
                 step = .email
