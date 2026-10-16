@@ -22,11 +22,11 @@ api:
   # Aanmaken: zie backend/README.md.
   existingSecret: punten-api
   email:
-    host: ""
+    host: "mail.vels.online"
     port: "587"
-    user: ""
+    user: "puntenteller@vels.online"
     useTls: "true"
-    from: "Puntenteller <noreply@vels.online>"
+    from: "Puntenteller <puntenteller@vels.online>"
 
 # PostgreSQL via CloudNativePG (de operator moet in het cluster draaien).
 # De backend leest host, poort, database, gebruiker en wachtwoord uit de
