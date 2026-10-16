@@ -55,6 +55,8 @@ gesyncte model.
   meer. Dat restant staat als `SavedPlayer.importedWins` (en per profiel
   `importedProfileWins`) en telt mee in `Statistics.wins`. Het is een eenmalige
   momentopname: bij een nieuwe import wordt hij overschreven, niet opgeteld.
-- Wil de PWA later ook syncen, dan moet ze naar dit model migreren (UUID's,
-  afgeleide stand, tombstones). Die migratie is met de bestaande `migrate*`-helpers
-  in `store.ts` te doen.
+- De PWA is gemigreerd naar dit model (opslag `pwa-punten-v3`). Oude id's worden
+  deterministisch omgezet met dezelfde afleiding als de iOS-import
+  (`frontend/src/ids.ts` en `PWA.uuid` in Swift; vastgelegd in een contracttest).
+  Zo krijgt hetzelfde spel in beide apps hetzelfde id. `player.score` blijft in
+  de PWA bestaan, maar wordt altijd uit het logboek herberekend.

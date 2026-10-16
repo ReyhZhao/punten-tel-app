@@ -62,6 +62,7 @@ op hun eigen telefoon zien en desgewenst zelf scores bijhouden.
 - **De App Store vereist dat je je account in de app kunt verwijderen.**
   Daarvoor is er `DELETE /api/v1/me`. Deelnemers verliezen dan de spellen van
   dat account.
-- **Nog niet gebouwd:** de sync-laag in de iOS-app, en meldingen (push) bij
-  een nieuw gedeeld spel. Voorlopig ververst de app bij openen en met
-  pull-to-refresh.
+- **iOS-app en PWA** hebben dezelfde sync-logica: `Sync.swift` en
+  `frontend/src/sync.ts`. Ze syncen bij openen, elke 20 seconden op de
+  voorgrond, kort na een wijziging, en met pull-to-refresh (iOS).
+- **Nog niet gebouwd:** meldingen (push) bij een nieuw gedeeld spel.

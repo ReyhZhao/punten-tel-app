@@ -51,9 +51,12 @@ Nog nodig:
 
 - [x] Backend: accounts met e-mailcode, sync, uitnodigen op e-mailadres, deelnemers laten scoren
 - [x] Uitrol op hetzelfde domein (Helm: `/api/`, `/admin/`)
-- [ ] `SyncService` in `PuntentellerKit`: wijzigingen sinds de laatste sync bijhouden, cursor bewaren, antwoord toepassen
-- [ ] Account aanmaken / inloggen met code, uitloggen, account verwijderen (instellingen)
-- [ ] Speler uitnodigen op e-mailadres; `SavedPlayer.accountId` onthouden
-- [ ] Instelling "Deelnemers mogen scores bijhouden" bij een spel
-- [ ] Gedeelde spellen tonen ("gedeeld door …"), alleen-lezen als scoren niet mag; spel verlaten
-- [ ] Verversen bij openen en met pull-to-refresh
+- [x] Sync-kern in `PuntentellerKit` (`Sync.swift`): gewijzigde spellen bijhouden, cursor, antwoord toepassen
+- [x] Account aanmaken / inloggen met code, uitloggen, account verwijderen (Instellingen → Account)
+- [x] Speler uitnodigen op e-mailadres; `SavedPlayer.accountId` onthouden
+- [x] Instelling "Deelnemers mogen scores bijhouden" bij een nieuw spel
+- [x] Gedeelde spellen tonen ("Gedeeld door …"), alleen bekijken als scoren niet mag; spel verlaten
+- [x] Syncen bij openen, elke 20 s op de voorgrond, na wijzigingen en met pull-to-refresh
+- [x] Zelfde functionaliteit in de PWA (`frontend/src/sync.ts`, `useSync.ts`)
+- [ ] Meldingen (push) bij een nieuw gedeeld spel
+- [ ] Spelers uitnodigen in een lopend spel (nu alleen bij het aanmaken)
