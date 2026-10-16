@@ -50,6 +50,11 @@ gesyncte model.
   dan de PWA, die het spel overschrijft.
 - `endTurnsLeft` blijft opgeslagen state (zoals in de PWA). Een undo zet die
   niet terug. Dat is gelijk aan de PWA en voorlopig acceptabel.
+- Bij een import uit de PWA zijn niet alle overwinningen af te leiden: spellen
+  die daar door "Opnieuw spelen" overschreven of verwijderd zijn, bestaan niet
+  meer. Dat restant staat als `SavedPlayer.importedWins` (en per profiel
+  `importedProfileWins`) en telt mee in `Statistics.wins`. Het is een eenmalige
+  momentopname: bij een nieuwe import wordt hij overschreven, niet opgeteld.
 - Wil de PWA later ook syncen, dan moet ze naar dit model migreren (UUID's,
   afgeleide stand, tombstones). Die migratie is met de bestaande `migrate*`-helpers
   in `store.ts` te doen.

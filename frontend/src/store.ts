@@ -8,7 +8,7 @@ function migrateEndMode(o: { endMode?: EndMode; finishRound?: boolean }): EndMod
   return o.finishRound ? 'round' : 'immediate';
 }
 
-const STORE_KEY = 'pwa-punten-v2';
+export const STORE_KEY = 'pwa-punten-v2';
 let _seq = 0;
 export const uid = () =>
   Date.now().toString(36) + (_seq++).toString(36) + Math.random().toString(36).slice(2, 6);

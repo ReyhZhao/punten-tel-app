@@ -146,12 +146,15 @@ public enum Statistics {
     /// Aantal gewonnen spellen van een bewaarde speler. Als `profileId` gegeven
     /// is, tellen alleen spellen van dat profiel. Spelers worden gekoppeld via
     /// `savedPlayerId` en anders op naam (hoofdletterongevoelig, zoals de PWA).
+    /// Overwinningen uit een PWA-import die niet af te leiden zijn, tellen mee.
     public static func wins(of saved: SavedPlayer, in games: [Game], profileId: UUID? = nil) -> Int {
-        games.filter { g in
+        let derived = games.filter { g in
             guard !g.isDeleted, let w = g.winner else { return false }
             if let profileId, g.profileId != profileId { return false }
             if let sid = w.savedPlayerId { return sid == saved.id }
             return w.name.caseInsensitiveCompare(saved.name) == .orderedSame
         }.count
+        let imported = profileId.map { saved.importedProfileWins[$0.uuidString] ?? 0 } ?? saved.importedWins
+        return derived + imported
     }
 }

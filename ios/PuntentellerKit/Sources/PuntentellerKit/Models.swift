@@ -172,13 +172,39 @@ public struct SavedPlayer: Identifiable, Codable, Hashable, Sendable {
     public var color: String
     public var accountId: String?
     public var updatedAt: Date
+    /// Overwinningen uit de PWA die niet uit geïmporteerde spellen af te leiden
+    /// zijn (bv. spellen die daar door "Opnieuw spelen" overschreven zijn).
+    public var importedWins: Int
+    /// Idem per spelprofiel, gesleuteld op `GameProfile.id.uuidString`.
+    public var importedProfileWins: [String: Int]
 
-    public init(id: UUID = UUID(), name: String, color: String, accountId: String? = nil, updatedAt: Date = .now) {
+    public init(
+        id: UUID = UUID(),
+        name: String,
+        color: String,
+        accountId: String? = nil,
+        updatedAt: Date = .now,
+        importedWins: Int = 0,
+        importedProfileWins: [String: Int] = [:]
+    ) {
         self.id = id
         self.name = name
         self.color = color
         self.accountId = accountId
         self.updatedAt = updatedAt
+        self.importedWins = importedWins
+        self.importedProfileWins = importedProfileWins
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        color = try c.decode(String.self, forKey: .color)
+        accountId = try c.decodeIfPresent(String.self, forKey: .accountId)
+        updatedAt = try c.decode(Date.self, forKey: .updatedAt)
+        importedWins = try c.decodeIfPresent(Int.self, forKey: .importedWins) ?? 0
+        importedProfileWins = try c.decodeIfPresent([String: Int].self, forKey: .importedProfileWins) ?? [:]
     }
 }
 

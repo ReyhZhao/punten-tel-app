@@ -17,14 +17,14 @@ Het gewenste gedrag staat in de PWA (`frontend/`) en in
 
 | PWA (`frontend/src/…`)                   | iOS                      | Status |
 |------------------------------------------|--------------------------|--------|
-| `store.ts` — opslag in `localStorage`     | `GameStore` (@Observable) + JSON-bestand in Application Support | ☐ |
-| `screens/HomeScreen.tsx`                  | `HomeView`               | ◐ lege staat |
-| `screens/NewGameScreen.tsx` (+ profielen) | `NewGameView`            | ☐ |
-| `screens/ScoringScreen.tsx`               | `ScoringView`            | ☐ |
+| `store.ts` — opslag in `localStorage`     | `AppData` (Kit) + `GameStore` (@Observable), JSON in Application Support | ✅ |
+| `screens/HomeScreen.tsx`                  | `HomeView`               | ✅ (verwijderen via lang drukken) |
+| `screens/NewGameScreen.tsx` (+ profielen) | `NewGameView`            | ◐ alles behalve spelprofielen en bewaarde spelers kiezen |
+| `screens/ScoringScreen.tsx`               | `ScoringView`            | ◐ basis: +/−, selectie, ranglijst, max-melding, menu (undo laatste, beëindigen, verwijderen); nog zonder zwevende +N |
 | `game/TurnTimer.tsx`                      | `TurnTimerView`          | ☐ |
-| `game/HistorySheet.tsx`                   | `.sheet` met `HistoryView` | ☐ |
+| `game/HistorySheet.tsx`                   | `.sheet` met `HistoryView` | ☐ (nu alleen undo van de laatste boeking via het menu) |
 | `game/ActionSheet.tsx`                    | `.confirmationDialog` / `Menu` | ☐ |
-| `screens/WinnerScreen.tsx` + `ui/Confetti.tsx` | `WinnerView` (Canvas/TimelineView-confetti) | ☐ |
+| `screens/WinnerScreen.tsx` + `ui/Confetti.tsx` | `WinnerView` (Canvas/TimelineView-confetti) | ☐ (nu een eenvoudige winnaarskaart in `ScoringView`) |
 | `screens/PlayersScreen.tsx`               | `PlayersView`            | ☐ |
 | `SettingsSheet.tsx`                       | `SettingsView`           | ☐ |
 | `hooks/useWakeLock.ts`                    | `UIApplication.shared.isIdleTimerDisabled` | ☐ |
@@ -34,8 +34,9 @@ Nog nodig:
 
 - [ ] Fredoka-font bundelen (OFL-licentie) en registreren via `UIAppFonts`; `Theme.display` daarop laten wijzen
 - [ ] App-icoon 1024×1024 zonder transparantie (vanaf `frontend/public/pwa-icon.svg`)
-- [ ] Haptics bij +/− en bij het einde van de timer (iOS-meerwaarde)
-- [ ] Export uit de PWA en import in de iOS-app, zodat bestaande spellen mee kunnen (JSON omzetten naar het model uit ADR-0002)
+- [x] Haptics bij +/− en bij het einde van het spel
+- [ ] Haptics bij het einde van de timer
+- [x] Export uit de PWA (Instellingen → Exporteren naar iOS-app) en import in de iOS-app (deelmenu of bestandskiezer), zie `PWAImport.swift`
 
 ## Fase 2 — App Store
 

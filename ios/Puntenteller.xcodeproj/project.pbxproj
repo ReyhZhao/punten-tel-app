@@ -13,6 +13,7 @@
 /* Begin PBXFileReference section */
 		A10000000000000000000004 /* Puntenteller.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Puntenteller.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000013 /* PuntentellerKit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = PuntentellerKit; sourceTree = "<group>"; };
+		A10000000000000000000014 /* Puntenteller-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Puntenteller-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -39,6 +40,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000005 /* Puntenteller */,
+				A10000000000000000000014 /* Puntenteller-Info.plist */,
 				A10000000000000000000013 /* PuntentellerKit */,
 				A10000000000000000000003 /* Products */,
 			);
@@ -199,6 +201,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Puntenteller-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Puntenteller;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.board-games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -227,6 +230,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Puntenteller-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Puntenteller;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.board-games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
