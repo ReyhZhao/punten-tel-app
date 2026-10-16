@@ -1,3 +1,23 @@
 .idea
 .idea/*
+.DS_Store
+
+# Web (frontend/dist wordt bewust wél gecommit)
 /frontend/node_modules/*
+
+# iOS / Xcode
+xcuserdata/
+DerivedData/
+*.xcuserstate
+/ios/PuntentellerKit/.build/
+/ios/PuntentellerKit/.swiftpm/
+*.ipa
+*.dSYM.zip
+
+# Backend (Django)
+__pycache__/
+*.py[cod]
+.venv/
+/backend/.env
+/backend/db.sqlite3
+/backend/staticfiles/

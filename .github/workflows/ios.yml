@@ -1,0 +1,29 @@
+name: iOS
+
+on:
+  push:
+    branches: [main]
+    paths: ['ios/**', '.github/workflows/ios.yml']
+  pull_request:
+    paths: ['ios/**', '.github/workflows/ios.yml']
+
+jobs:
+  kit:
+    name: PuntentellerKit-tests
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: ios/PuntentellerKit
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
+
+  app:
+    name: App bouwen (simulator)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - run: >
+          xcodebuild -project ios/Puntenteller.xcodeproj -scheme Puntenteller
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO build
