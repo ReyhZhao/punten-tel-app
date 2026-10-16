@@ -7,6 +7,7 @@ struct NewGameView: View {
     var onStart: (Game) -> Void
 
     @Environment(GameStore.self) private var store
+    @Environment(SyncEngine.self) private var sync
     @Environment(\.dismiss) private var dismiss
 
     private static let maxPlayers = 8
@@ -22,7 +23,10 @@ struct NewGameView: View {
     @State private var maxRoundsOn = false
     @State private var maxRounds = 10
     @State private var sortPlayers = false
-    @State private var players: [String] = []
+    @State private var players: [NewPlayer] = []
+    @State private var participantsCanScore = false
+    /// Index van de speler die uitgenodigd wordt (sheet).
+    @State private var invitingIndex: Int?
     @State private var draft = ""
     @FocusState private var nameFocused: Bool
     @FocusState private var draftFocused: Bool
@@ -55,7 +59,7 @@ struct NewGameView: View {
     private var playerSuggestions: [SavedPlayer] {
         let draftKey = draft.trimmingCharacters(in: .whitespaces)
         return store.savedPlayers.filter { saved in
-            !players.contains { $0.caseInsensitiveCompare(saved.name) == .orderedSame }
+            !players.contains { $0.name.caseInsensitiveCompare(saved.name) == .orderedSame }
                 && (draftKey.isEmpty || saved.name.localizedCaseInsensitiveContains(draftKey))
         }
     }
@@ -93,6 +97,13 @@ struct NewGameView: View {
                     maxRoundsSection
                     sortSection
                     playersSection
+                    if sync.isSignedIn && players.contains(where: { $0.accountId != nil }) {
+                        ToggleRow(
+                            title: "Deelnemers mogen scores bijhouden",
+                            subtitle: "Uitgenodigde spelers kunnen dan ook punten boeken",
+                            isOn: $participantsCanScore
+                        )
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
@@ -126,6 +137,15 @@ struct NewGameView: View {
         .animation(.snappy, value: nameFocused)
         .animation(.snappy, value: draftFocused)
         .animation(.snappy, value: activeProfile?.id)
+        .sheet(isPresented: Binding(get: { invitingIndex != nil }, set: { if !$0 { invitingIndex = nil } })) {
+            if let i = invitingIndex, players.indices.contains(i) {
+                InviteSheet(playerName: players[i].name, accountId: players[i].accountId) { accountId in
+                    players[i].accountId = accountId
+                    store.rememberAccount(accountId, forPlayerNamed: players[i].name)
+                }
+                .presentationDetents([.medium])
+            }
+        }
     }
 
     // MARK: - Naam / profiel
@@ -319,17 +339,32 @@ struct NewGameView: View {
             }
             ForEach(Array(players.enumerated()), id: \.offset) { i, player in
                 HStack(spacing: 12) {
-                    PlayerAvatar(name: player, color: PlayerColors.color(at: i), size: 36)
-                    Text(player)
-                        .font(Theme.display(17))
-                        .foregroundStyle(Theme.text)
+                    PlayerAvatar(name: player.name, color: PlayerColors.color(at: i), size: 36)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(player.name)
+                            .font(Theme.display(17))
+                            .foregroundStyle(Theme.text)
+                        if player.accountId != nil {
+                            Text("Uitgenodigd")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Theme.positive)
+                        }
+                    }
                     Spacer()
+                    if sync.isSignedIn {
+                        Button { invitingIndex = i } label: {
+                            Image(systemName: player.accountId != nil ? "person.crop.circle.badge.checkmark" : "envelope")
+                                .foregroundStyle(player.accountId != nil ? Theme.positive : Theme.muted)
+                                .frame(width: 36, height: 36)
+                        }
+                        .accessibilityLabel(player.accountId != nil ? "\(player.name) is uitgenodigd" : "\(player.name) uitnodigen")
+                    }
                     Button { players.remove(at: i) } label: {
                         Image(systemName: "trash")
                             .foregroundStyle(Theme.muted)
                             .frame(width: 36, height: 36)
                     }
-                    .accessibilityLabel("\(player) verwijderen")
+                    .accessibilityLabel("\(player.name) verwijderen")
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
@@ -413,7 +448,9 @@ struct NewGameView: View {
     private func addPlayer(_ raw: String) {
         let name = raw.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty, players.count < Self.maxPlayers else { return }
-        players.append(name)
+        // Eerder uitgenodigd? Dan direct weer met dat account (alleen met een account).
+        let accountId = sync.isSignedIn ? store.savedPlayer(named: name)?.accountId : nil
+        players.append(NewPlayer(name: name, accountId: accountId))
         draft = ""
         // Toetsenbord open laten zodat je snel de volgende speler typt.
         draftFocused = players.count < Self.maxPlayers
@@ -424,7 +461,12 @@ struct NewGameView: View {
         // Koppel aan het gekozen profiel, of aan een profiel met dezelfde naam
         // (voor de winst-statistiek per speltype), zoals de PWA.
         let profileId = activeProfile?.id ?? store.profile(named: trimmedName)?.id
-        onStart(store.startGame(name: trimmedName, rules: rules, playerNames: players, profileId: profileId))
+        let invited = sync.isSignedIn && players.contains { $0.accountId != nil }
+        onStart(store.startGame(
+            name: trimmedName, rules: rules,
+            players: sync.isSignedIn ? players : players.map { NewPlayer(name: $0.name) },
+            profileId: profileId, participantsCanScore: invited && participantsCanScore
+        ))
     }
 }
 
@@ -482,7 +524,91 @@ extension EndMode {
     }
 }
 
+/// Een speler uitnodigen door zijn account te zoeken op e-mailadres.
+private struct InviteSheet: View {
+    let playerName: String
+    let accountId: String?
+    let onChange: (String?) -> Void
+
+    @Environment(SyncEngine.self) private var sync
+    @Environment(\.dismiss) private var dismiss
+    @State private var email = ""
+    @State private var found: APIClient.LookupResult?
+    @State private var busy = false
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if accountId != nil && found == nil {
+                    Section {
+                        Label("\(playerName) is uitgenodigd", systemImage: "person.crop.circle.badge.checkmark")
+                            .foregroundStyle(Theme.positive)
+                        Button("Uitnodiging intrekken", role: .destructive) {
+                            onChange(nil)
+                            dismiss()
+                        }
+                    }
+                }
+                Section {
+                    TextField("E-mailadres van \(playerName)", text: $email)
+                        .textContentType(.emailAddress)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .submitLabel(.search)
+                        .onSubmit(search)
+                    Button(action: search) {
+                        HStack {
+                            Text("Zoeken")
+                            if busy { Spacer(); ProgressView() }
+                        }
+                    }
+                    .disabled(email.trimmingCharacters(in: .whitespaces).isEmpty || busy)
+                } footer: {
+                    Text("Vul het volledige e-mailadres in waarmee \(playerName) een Puntenteller-account heeft. Na uitnodigen ziet \(playerName) dit spel en de uitslag in de eigen app.")
+                }
+                if let found {
+                    Section {
+                        Label("Gevonden: \(found.displayName)", systemImage: "person.fill.checkmark")
+                        Button("\(playerName) koppelen aan \(found.displayName)") {
+                            onChange(found.id.lowercased())
+                            dismiss()
+                        }
+                        .font(.headline)
+                    }
+                }
+                if let error {
+                    Section { Text(error).foregroundStyle(Theme.negative) }
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(Theme.bg)
+            .navigationTitle("\(playerName) uitnodigen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Annuleer") { dismiss() } }
+            }
+        }
+    }
+
+    private func search() {
+        error = nil
+        found = nil
+        busy = true
+        Task {
+            defer { busy = false }
+            do {
+                found = try await sync.lookup(email: email.trimmingCharacters(in: .whitespaces))
+            } catch {
+                self.error = error.localizedDescription
+            }
+        }
+    }
+}
+
 #Preview {
     NewGameView { _ in }
         .environment(GameStore.preview)
+        .environment(SyncEngine(store: GameStore.preview))
 }

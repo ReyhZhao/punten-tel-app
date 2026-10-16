@@ -34,8 +34,11 @@ private struct ScoringContent: View {
     let game: Game
 
     @Environment(GameStore.self) private var store
+    @Environment(SyncEngine.self) private var sync
     @Environment(\.dismiss) private var dismiss
     @State private var amount: Int? = 1
+    @State private var confirmLeave = false
+    @State private var leaveError: String?
     @State private var selectedId: UUID?
     @State private var floats: [FloatEntry] = []
     @State private var showHistory = false
@@ -48,6 +51,9 @@ private struct ScoringContent: View {
     @State private var remaining = 60
     @State private var running = false
 
+    private var isOwner: Bool { game.isOwned(by: sync.accountId) }
+    private var canScore: Bool { game.canScore(as: sync.accountId) }
+
     private var selected: Player? {
         game.players.first { $0.id == selectedId } ?? game.players.first
     }
@@ -57,9 +63,10 @@ private struct ScoringContent: View {
             header
             ScrollView {
                 VStack(spacing: 10) {
-                    if let selected { controlCard(selected: selected) }
+                    if !canScore { viewOnlyCard }
+                    if canScore, let selected { controlCard(selected: selected) }
                     if let left = game.endTurnsLeft { finishingBanner(turnsLeft: left) }
-                    if game.rules.timerOn, let turnPlayer = game.players[safe: turnIdx] ?? game.players.first {
+                    if canScore, game.rules.timerOn, let turnPlayer = game.players[safe: turnIdx] ?? game.players.first {
                         TurnTimerView(
                             player: turnPlayer,
                             remaining: remaining,
@@ -75,12 +82,12 @@ private struct ScoringContent: View {
                         PlayerRow(
                             player: player,
                             score: score,
-                            isSelected: player.id == selected?.id,
+                            isSelected: canScore && player.id == selected?.id,
                             isLeader: game.leaders.contains { $0.id == player.id },
                             isMaxed: game.endTurnsLeft != nil && game.rules.maxScore.map { score >= $0 } == true,
                             floats: floats.filter { $0.playerId == player.id }
                         )
-                        .onTapGesture { selectedId = player.id }
+                        .onTapGesture { if canScore { selectedId = player.id } }
                     }
                 }
                 .padding(.horizontal, 16)
@@ -104,7 +111,7 @@ private struct ScoringContent: View {
             }
         }
         .sheet(isPresented: $showHistory) {
-            HistoryView(game: game) { store.undo(entryId: $0, in: game.id) }
+            HistoryView(game: game, canUndo: canScore) { store.undo(entryId: $0, in: game.id) }
                 .presentationDetents([.medium, .large])
                 .presentationCornerRadius(Theme.Radius.sheet)
         }
@@ -112,6 +119,25 @@ private struct ScoringContent: View {
             Button("Resetten", role: .destructive) { store.resetScores(game.id) }
         } message: {
             Text("Alle standen gaan terug naar 0.")
+        }
+        .confirmationDialog("Spel verlaten?", isPresented: $confirmLeave, titleVisibility: .visible) {
+            Button("Verlaten", role: .destructive) {
+                Task {
+                    do {
+                        try await sync.leave(game.id)
+                        dismiss()
+                    } catch {
+                        leaveError = error.localizedDescription
+                    }
+                }
+            }
+        } message: {
+            Text("Je ziet dit spel dan niet meer. De eigenaar kan je opnieuw uitnodigen.")
+        }
+        .alert("Verlaten mislukt", isPresented: Binding(get: { leaveError != nil }, set: { if !$0 { leaveError = nil } })) {
+            Button("OK") {}
+        } message: {
+            Text(leaveError ?? "")
         }
         .confirmationDialog("Spel verwijderen?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Verwijderen", role: .destructive) {
@@ -149,10 +175,18 @@ private struct ScoringContent: View {
             }
             .accessibilityLabel("Historie")
             Menu {
-                Button("Beëindig spel & toon winnaar", systemImage: "flag.checkered") { store.finish(game.id) }
+                if canScore {
+                    Button("Beëindig spel & toon winnaar", systemImage: "flag.checkered") { store.finish(game.id) }
+                }
                 Button("Historie bekijken", systemImage: "list.bullet") { showHistory = true }
-                Button("Scores resetten", systemImage: "arrow.counterclockwise") { confirmReset = true }
-                Button("Spel verwijderen", systemImage: "trash", role: .destructive) { confirmDelete = true }
+                if isOwner {
+                    Button("Scores resetten", systemImage: "arrow.counterclockwise") { confirmReset = true }
+                    Button("Spel verwijderen", systemImage: "trash", role: .destructive) { confirmDelete = true }
+                } else {
+                    Button("Spel verlaten", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
+                        confirmLeave = true
+                    }
+                }
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 17, weight: .semibold))
@@ -163,6 +197,28 @@ private struct ScoringContent: View {
         .foregroundStyle(Theme.text)
         .padding(.horizontal, 10)
         .padding(.vertical, 4)
+    }
+
+    /// Gedeeld spel waarin je niet mag scoren: alleen meekijken.
+    private var viewOnlyCard: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "eye")
+                .font(.system(size: 17))
+                .foregroundStyle(Theme.accent)
+                .frame(width: 40, height: 40)
+                .background(Theme.surface2, in: .rect(cornerRadius: 12))
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Alleen bekijken")
+                    .font(Theme.display(16))
+                    .foregroundStyle(Theme.text)
+                Text("\(store.accountName(game.ownerId) ?? "De eigenaar") houdt de scores bij. De stand wordt vanzelf bijgewerkt.")
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(Theme.muted)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .card()
     }
 
     private var subtitle: String {
@@ -505,4 +561,5 @@ extension Array {
         ScoringView(gameId: store.games[0].id)
     }
     .environment(store)
+    .environment(SyncEngine(store: store))
 }

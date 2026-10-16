@@ -10,11 +10,23 @@ struct SettingsView: View {
     let onImport: () -> Void
 
     @AppStorage(Preferences.keepAwake) private var keepAwake = false
+    @Environment(SyncEngine.self) private var sync
     @Environment(\.dismiss) private var dismiss
+    @State private var showAccount = false
 
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Button { showAccount = true } label: {
+                        row(
+                            "person.crop.circle",
+                            sync.account?.displayName ?? "Account",
+                            sync.account.map { "Ingelogd als \($0.email)" } ?? "Spellen delen met medespelers en op al je toestellen"
+                        )
+                    }
+                    .foregroundStyle(Theme.text)
+                }
                 Section {
                     Toggle(isOn: $keepAwake) {
                         row("sun.max", "Scherm aan houden", "Voorkomt dat het scherm tijdens het spelen uitgaat")
@@ -40,6 +52,7 @@ struct SettingsView: View {
                     Button("Klaar") { dismiss() }
                 }
             }
+            .sheet(isPresented: $showAccount) { AccountView() }
         }
     }
 

@@ -8,6 +8,7 @@ struct WinnerView: View {
     let onRematch: (UUID) -> Void
 
     @Environment(GameStore.self) private var store
+    @Environment(SyncEngine.self) private var sync
     @Environment(\.dismiss) private var dismiss
 
     private var ranked: [Player] { game.ranked }
@@ -48,12 +49,15 @@ struct WinnerView: View {
         .toolbar(.hidden, for: .navigationBar)
         .safeAreaInset(edge: .bottom) {
             BottomBar {
-                Button {
-                    if let next = store.rematch(game.id) { onRematch(next.id) }
-                } label: {
-                    Label("Opnieuw spelen", systemImage: "arrow.counterclockwise")
+                // Opnieuw spelen maakt een nieuw spel; dat doet de eigenaar.
+                if game.isOwned(by: sync.accountId) {
+                    Button {
+                        if let next = store.rematch(game.id) { onRematch(next.id) }
+                    } label: {
+                        Label("Opnieuw spelen", systemImage: "arrow.counterclockwise")
+                    }
+                    .buttonStyle(PrimaryButtonStyle())
                 }
-                .buttonStyle(PrimaryButtonStyle())
                 Button("Terug naar spellen") { dismiss() }
                     .buttonStyle(SoftButtonStyle(height: 48))
             }

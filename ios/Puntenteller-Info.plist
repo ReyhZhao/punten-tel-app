@@ -20,6 +20,10 @@
 			</array>
 		</dict>
 	</array>
+	<!-- Adres van de backend; lokaal te overschrijven met de omgevingsvariabele
+	     PUNTENTELLER_API_URL (zie APIClient.swift). -->
+	<key>PuntentellerAPIBaseURL</key>
+	<string>https://punten.vels.online/api/v1</string>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<false/>
 </dict>

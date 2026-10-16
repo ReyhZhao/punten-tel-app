@@ -137,7 +137,10 @@ extension Game {
         let fresh = players.map {
             Player(name: $0.name, color: $0.color, savedPlayerId: $0.savedPlayerId, accountId: $0.accountId, updatedAt: now)
         }
-        return Game(name: name, profileId: profileId, rules: rules, players: fresh, createdAt: now)
+        return Game(
+            name: name, profileId: profileId, rules: rules, players: fresh, createdAt: now,
+            participantsCanScore: participantsCanScore
+        )
     }
 
     public mutating func markDeleted(at now: Date = .now) {

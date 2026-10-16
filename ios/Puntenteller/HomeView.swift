@@ -10,6 +10,7 @@ enum Route: Hashable {
 /// Startscherm "Spellen": alle spellen, laatst gespeeld eerst, en "Nieuw spel".
 struct HomeView: View {
     @Environment(GameStore.self) private var store
+    @Environment(SyncEngine.self) private var sync
     @State private var path: [Route] = []
     @State private var showNewGame = false
     @State private var showSettings = false
@@ -25,7 +26,12 @@ struct HomeView: View {
                         emptyState
                     } else {
                         ForEach(store.games) { game in
-                            NavigationLink(value: Route.game(game.id)) { GameCard(game: game) }
+                            NavigationLink(value: Route.game(game.id)) {
+                                GameCard(
+                                    game: game,
+                                    sharedBy: game.isOwned(by: sync.accountId) ? nil : (store.accountName(game.ownerId) ?? "een medespeler")
+                                )
+                            }
                                 .buttonStyle(.plain)
                                 .contextMenu {
                                     Button("Verwijderen", systemImage: "trash", role: .destructive) {
@@ -39,6 +45,7 @@ struct HomeView: View {
                 .padding(.bottom, 100)
             }
             .background(Theme.bg)
+            .refreshable { await sync.syncNow() }
             .safeAreaInset(edge: .bottom) {
                 BottomBar {
                     Button { showNewGame = true } label: {
@@ -147,6 +154,8 @@ struct HomeView: View {
 /// Kaart voor één spel op het startscherm.
 private struct GameCard: View {
     let game: Game
+    /// Naam van de eigenaar als het spel met jou gedeeld is.
+    var sharedBy: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -168,9 +177,13 @@ private struct GameCard: View {
                         }
                     }
                     HStack(spacing: 4) {
-                        Image(systemName: game.rules.scoring.symbol)
+                        Image(systemName: sharedBy == nil ? game.rules.scoring.symbol : "person.2.fill")
                             .foregroundStyle(Theme.accent)
-                        Text("\(game.rules.scoring.label) · \(game.lastPlayed.relativeNL)")
+                        if let sharedBy {
+                            Text("Gedeeld door \(sharedBy) · \(game.lastPlayed.relativeNL)")
+                        } else {
+                            Text("\(game.rules.scoring.label) · \(game.lastPlayed.relativeNL)")
+                        }
                     }
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.muted)
@@ -222,9 +235,11 @@ private struct GameCard: View {
 }
 
 #Preview("Met spellen") {
-    HomeView().environment(GameStore.preview)
+    let store = GameStore.preview
+    HomeView().environment(store).environment(SyncEngine(store: store))
 }
 
 #Preview("Leeg") {
-    HomeView().environment(GameStore(fileURL: nil))
+    let store = GameStore(fileURL: nil)
+    HomeView().environment(store).environment(SyncEngine(store: store))
 }

@@ -9,6 +9,8 @@ import PuntentellerKit
 final class GameStore {
     private(set) var data: AppData
     @ObservationIgnored private let fileURL: URL?
+    /// Wordt aangeroepen na elke lokale wijziging (de sync plant dan een upload).
+    @ObservationIgnored var onLocalChange: (() -> Void)?
     @ObservationIgnored private let log = Logger(subsystem: "online.vels.puntenteller", category: "GameStore")
 
     /// - Parameter fileURL: nil = alleen in het geheugen (previews).
@@ -38,10 +40,58 @@ final class GameStore {
     func game(_ id: UUID) -> Game? { data.game(id) }
 
     @discardableResult
-    func startGame(name: String, rules: GameRules, playerNames: [String], profileId: UUID? = nil) -> Game {
-        let game = data.startGame(name: name, rules: rules, playerNames: playerNames, profileId: profileId)
+    func startGame(
+        name: String, rules: GameRules, players: [NewPlayer], profileId: UUID? = nil, participantsCanScore: Bool = false
+    ) -> Game {
+        let game = data.startGame(
+            name: name, rules: rules, players: players, profileId: profileId, participantsCanScore: participantsCanScore
+        )
         save()
         return game
+    }
+
+    /// Onthoud het account bij de bewaarde speler (na opzoeken op e-mail).
+    func rememberAccount(_ accountId: String?, forPlayerNamed name: String) {
+        data.setAccount(accountId, forSavedPlayerNamed: name)
+        save()
+    }
+
+    func savedPlayer(named name: String) -> SavedPlayer? {
+        data.savedPlayers.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+    }
+
+    // MARK: - Sync
+
+    func syncRequest(me: String?) -> (SyncRequest, SyncSnapshot) { data.syncRequest(me: me) }
+
+    func applySync(_ response: SyncResponse, sent: SyncSnapshot) {
+        data.applySync(response, sent: sent)
+        save(notify: false)
+    }
+
+    /// Na het inloggen: alles wat lokaal staat, gaat mee naar de server.
+    func prepareFirstSync() {
+        data.resetSync()
+        data.markEverythingDirty()
+        save(notify: false)
+    }
+
+    func resetSync() {
+        data.resetSync()
+        save(notify: false)
+    }
+
+    var hasPendingChanges: Bool { data.sync.hasPendingChanges }
+
+    func accountName(_ id: String?) -> String? {
+        id.flatMap { data.sync.accountNames[$0.lowercased()] }
+    }
+
+    /// Spel lokaal weghalen (na "spel verlaten"); de server stuurt het niet meer.
+    func removeLocally(_ gameId: UUID) {
+        data.games.removeAll { $0.id == gameId }
+        data.sync.dirtyGames[gameId] = nil
+        save(notify: false)
     }
 
     @discardableResult
@@ -105,7 +155,8 @@ final class GameStore {
         return summary
     }
 
-    private func save() {
+    private func save(notify: Bool = true) {
+        if notify { onLocalChange?() }
         guard let fileURL else { return }
         do {
             try FileManager.default.createDirectory(

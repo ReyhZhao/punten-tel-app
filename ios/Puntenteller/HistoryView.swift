@@ -5,6 +5,8 @@ import PuntentellerKit
 /// (zie `game/HistorySheet.tsx`).
 struct HistoryView: View {
     let game: Game
+    /// Alleen wie mag scoren, mag boekingen ongedaan maken.
+    var canUndo = true
     let onUndo: (UUID) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -60,13 +62,15 @@ struct HistoryView: View {
                 .font(Theme.display(19, weight: .bold))
                 .monospacedDigit()
                 .foregroundStyle(entry.delta >= 0 ? Theme.positive : Theme.negative)
-            Button { onUndo(entry.id) } label: {
-                Image(systemName: "arrow.uturn.backward")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Theme.muted)
-                    .frame(width: 36, height: 36)
+            if canUndo {
+                Button { onUndo(entry.id) } label: {
+                    Image(systemName: "arrow.uturn.backward")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Theme.muted)
+                        .frame(width: 36, height: 36)
+                }
+                .accessibilityLabel("Ongedaan maken")
             }
-            .accessibilityLabel("Ongedaan maken")
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)

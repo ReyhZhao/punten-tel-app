@@ -115,6 +115,10 @@ public struct Game: Identifiable, Codable, Hashable, Sendable {
     public var updatedAt: Date
     public var finishedAt: Date?
     public var deletedAt: Date?
+    /// Account van de eigenaar (backend). nil = van jezelf, nog niet gesynct.
+    public var ownerId: String?
+    /// Gekoppelde spelers mogen ook scores bijhouden (ADR-0003).
+    public var participantsCanScore: Bool
 
     public init(
         id: UUID = UUID(),
@@ -127,7 +131,9 @@ public struct Game: Identifiable, Codable, Hashable, Sendable {
         createdAt: Date = .now,
         updatedAt: Date? = nil,
         finishedAt: Date? = nil,
-        deletedAt: Date? = nil
+        deletedAt: Date? = nil,
+        ownerId: String? = nil,
+        participantsCanScore: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -140,6 +146,27 @@ public struct Game: Identifiable, Codable, Hashable, Sendable {
         self.updatedAt = updatedAt ?? createdAt
         self.finishedAt = finishedAt
         self.deletedAt = deletedAt
+        self.ownerId = ownerId
+        self.participantsCanScore = participantsCanScore
+    }
+
+    // Velden die later zijn toegevoegd, zijn optioneel bij het decoderen,
+    // zodat oudere opslagbestanden blijven laden.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        profileId = try c.decodeIfPresent(UUID.self, forKey: .profileId)
+        rules = try c.decode(GameRules.self, forKey: .rules)
+        players = try c.decode([Player].self, forKey: .players)
+        log = try c.decode([ScoreEntry].self, forKey: .log)
+        endTurnsLeft = try c.decodeIfPresent(Int.self, forKey: .endTurnsLeft)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        updatedAt = try c.decode(Date.self, forKey: .updatedAt)
+        finishedAt = try c.decodeIfPresent(Date.self, forKey: .finishedAt)
+        deletedAt = try c.decodeIfPresent(Date.self, forKey: .deletedAt)
+        ownerId = try c.decodeIfPresent(String.self, forKey: .ownerId)
+        participantsCanScore = try c.decodeIfPresent(Bool.self, forKey: .participantsCanScore) ?? false
     }
 
     public var isFinished: Bool { finishedAt != nil }
@@ -154,13 +181,20 @@ public struct GameProfile: Identifiable, Codable, Hashable, Sendable {
     public var rules: GameRules
     public var updatedAt: Date
     public var deletedAt: Date?
+    /// Account van de eigenaar. nil = van jezelf. Profielen van anderen komen
+    /// mee met een gedeeld spel en zijn alleen-lezen.
+    public var ownerId: String?
 
-    public init(id: UUID = UUID(), name: String, rules: GameRules, updatedAt: Date = .now, deletedAt: Date? = nil) {
+    public init(
+        id: UUID = UUID(), name: String, rules: GameRules, updatedAt: Date = .now,
+        deletedAt: Date? = nil, ownerId: String? = nil
+    ) {
         self.id = id
         self.name = name
         self.rules = rules
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
+        self.ownerId = ownerId
     }
 }
 

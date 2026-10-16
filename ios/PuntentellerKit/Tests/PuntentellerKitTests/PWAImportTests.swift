@@ -152,3 +152,44 @@ private func export(lastPlayedRummikub: Double = 1_760_000_600_000) -> Data {
         #expect(sp.importedWins == 0 && sp.importedProfileWins.isEmpty)
     }
 }
+
+@Suite struct DerivedIdContractTests {
+    /// Moet gelijk zijn aan `derivedId` in frontend/src/ids.ts, anders krijgt
+    /// hetzelfde spel in de PWA en na een import in iOS een ander id.
+    @Test func matchesThePWA() {
+        #expect(PWA.uuid("game", "g1").uuidString.lowercased() == "11afdaab-408c-58ad-bbbb-685dcabf38fd")
+        #expect(PWA.uuid("player", "g1:p1").uuidString.lowercased() == "120cb6bf-caaa-585e-8f51-89c0d6a508d5")
+    }
+}
+
+@Suite struct PWASyncVersionImportTests {
+    /// Export van de sync-versie van de PWA: UUID's, tombstones, eigenaar.
+    private let json = Data("""
+    {"format":"puntenteller-pwa-export","version":1,"data":{"games":[
+      {"id":"6f0e1c2a-1111-4111-8111-000000000001","name":"Nieuw","scoring":"high","endMode":"round",
+       "ownerId":"AAAAAAAA-0000-4000-8000-000000000001","participantsCanScore":true,
+       "players":[{"id":"6f0e1c2a-2222-4222-8222-000000000001","name":"Anna","color":"#FF5A5F","score":5,
+                   "accountId":"bbbbbbbb-0000-4000-8000-000000000002"},
+                  {"id":"6f0e1c2a-2222-4222-8222-000000000002","name":"Bram","color":"#FF8A3D","score":0}],
+       "log":[{"id":"6f0e1c2a-3333-4333-8333-000000000001","playerId":"6f0e1c2a-2222-4222-8222-000000000001","delta":5,"ts":1760000100000},
+              {"id":"6f0e1c2a-3333-4333-8333-000000000002","playerId":"6f0e1c2a-2222-4222-8222-000000000002","delta":9,"ts":1760000200000,"undoneAt":1760000300000}],
+       "createdAt":1760000000000,"lastPlayed":1760000300000,"finished":false},
+      {"id":"6f0e1c2a-1111-4111-8111-000000000002","name":"Weg","players":[],"log":[],"createdAt":1,"lastPlayed":2,"deletedAt":3}
+    ]}}
+    """.utf8)
+
+    @Test func keepsUuidsTombstonesAndOwnership() throws {
+        var data = AppData()
+        let summary = try data.importPWAExport(json)
+        #expect(summary.gamesAdded == 1)
+        #expect(summary.scoreCorrections == 0)
+        let game = try #require(data.games.first)
+        #expect(game.id.uuidString.lowercased() == "6f0e1c2a-1111-4111-8111-000000000001")
+        #expect(game.players[0].id.uuidString.lowercased() == "6f0e1c2a-2222-4222-8222-000000000001")
+        #expect(game.log.count == 2)
+        #expect(game.score(of: game.players[1].id) == 0)
+        #expect(game.ownerId == "aaaaaaaa-0000-4000-8000-000000000001")
+        #expect(game.participantsCanScore)
+        #expect(game.players[0].accountId == "bbbbbbbb-0000-4000-8000-000000000002")
+    }
+}

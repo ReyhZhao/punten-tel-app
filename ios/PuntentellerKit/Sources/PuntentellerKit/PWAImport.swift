@@ -62,23 +62,26 @@ extension AppData {
         var summary = PWAImportSummary()
 
         // 1. Spelprofielen
-        for p in state.gameProfiles ?? [] {
-            let id = PWA.uuid("profile", p.id)
+        for p in state.gameProfiles ?? [] where p.deletedAt == nil {
+            let id = PWA.id("profile", p.id)
             guard !gameProfiles.contains(where: { $0.id == id }) else { continue }
             gameProfiles.append(GameProfile(id: id, name: p.name, rules: p.rules, updatedAt: now))
+            markDirty(profile: id)
             summary.profilesAdded += 1
         }
 
         // 2. Bewaarde spelers (op naam gekoppeld aan wie er al is)
         for sp in state.savedPlayers ?? [] {
             if savedPlayer(named: sp.name) == nil {
-                savedPlayers.append(SavedPlayer(id: PWA.uuid("saved", sp.id), name: sp.name, color: sp.color, updatedAt: now))
+                savedPlayers.append(SavedPlayer(
+                    id: PWA.id("saved", sp.id), name: sp.name, color: sp.color, accountId: sp.accountId, updatedAt: now
+                ))
                 summary.playersAdded += 1
             }
         }
 
-        // 3. Spellen
-        for pg in state.games ?? [] {
+        // 3. Spellen (verwijderde spellen uit de PWA niet)
+        for pg in state.games ?? [] where pg.deletedAt == nil {
             var (game, corrections) = pg.toGame()
             for i in game.players.indices {
                 let name = game.players[i].name
@@ -96,6 +99,7 @@ extension AppData {
                 // met ms-precisie, en kunnen daardoor een fractie afwijken.
                 if PWA.milliseconds(game.updatedAt) > PWA.milliseconds(games[i].updatedAt) {
                     games[i] = game
+                    markDirty(game: game.id)
                     summary.gamesUpdated += 1
                     summary.scoreCorrections += corrections
                 } else {
@@ -103,6 +107,7 @@ extension AppData {
                 }
             } else {
                 games.append(game)
+                markDirty(game: game.id)
                 summary.gamesAdded += 1
                 summary.scoreCorrections += corrections
             }
@@ -112,7 +117,7 @@ extension AppData {
         //    niet meer bestaan. Wat niet uit de geïmporteerde spellen af te
         //    leiden is, bewaren we apart. Overschrijven (niet optellen), zodat
         //    opnieuw importeren niets verdubbelt.
-        let importedIds = Set((state.games ?? []).map { PWA.uuid("game", $0.id) })
+        let importedIds = Set((state.games ?? []).map { PWA.id("game", $0.id) })
         let importedGames = games.filter { importedIds.contains($0.id) }
         for sp in state.savedPlayers ?? [] {
             guard let i = savedPlayers.firstIndex(where: { $0.name.caseInsensitiveCompare(sp.name) == .orderedSame }) else { continue }
@@ -123,7 +128,7 @@ extension AppData {
             savedPlayers[i].importedWins = max(0, (sp.wins ?? 0) - derived)
             var perProfile: [String: Int] = [:]
             for (pwaProfileId, wins) in sp.profileWins ?? [:] {
-                let profileId = PWA.uuid("profile", pwaProfileId)
+                let profileId = PWA.id("profile", pwaProfileId)
                 let rest = wins - Statistics.wins(of: base, in: importedGames, profileId: profileId)
                 if rest > 0 { perProfile[profileId.uuidString] = rest }
             }
@@ -159,6 +164,7 @@ enum PWA {
         let name: String
         let color: String
         let score: Int
+        let accountId: String?
     }
 
     struct LogEntry: Decodable {
@@ -166,6 +172,8 @@ enum PWA {
         let playerId: String
         let delta: Int
         let ts: Double
+        /// Sinds de sync-versie van de PWA: ingetrokken boekingen blijven als tombstone.
+        let undoneAt: Double?
     }
 
     struct Game: Decodable {
@@ -186,6 +194,9 @@ enum PWA {
         let createdAt: Double
         let lastPlayed: Double?
         let finished: Bool?
+        let ownerId: String?
+        let participantsCanScore: Bool?
+        let deletedAt: Double?
 
         var rules: GameRules {
             GameRules(
@@ -204,14 +215,22 @@ enum PWA {
             let gameKey = id
             let created = PWA.date(createdAt)
             let lastPlayed = lastPlayed.map(PWA.date) ?? created
-            let playerIds = Dictionary(players.map { ($0.id, PWA.uuid("player", "\(gameKey):\($0.id)")) }, uniquingKeysWith: { a, _ in a })
+            let playerIds = Dictionary(
+                players.map { ($0.id, PWA.id("player", $0.id, scope: gameKey)) }, uniquingKeysWith: { a, _ in a }
+            )
 
             let newPlayers = players.map {
-                PuntentellerKit.Player(id: playerIds[$0.id]!, name: $0.name, color: $0.color, updatedAt: lastPlayed)
+                PuntentellerKit.Player(
+                    id: playerIds[$0.id]!, name: $0.name, color: $0.color,
+                    accountId: $0.accountId?.lowercased(), updatedAt: lastPlayed
+                )
             }
             var entries: [ScoreEntry] = (log ?? []).compactMap { e in
                 guard let pid = playerIds[e.playerId] else { return nil }
-                return ScoreEntry(id: PWA.uuid("entry", "\(gameKey):\(e.id)"), playerId: pid, delta: e.delta, createdAt: PWA.date(e.ts))
+                return ScoreEntry(
+                    id: PWA.id("entry", e.id, scope: gameKey), playerId: pid, delta: e.delta,
+                    createdAt: PWA.date(e.ts), undoneAt: e.undoneAt.map(PWA.date)
+                )
             }
 
             // In de PWA staat de score los van het logboek opgeslagen. Klopt de
@@ -219,7 +238,7 @@ enum PWA {
             var corrections = 0
             for p in players {
                 let pid = playerIds[p.id]!
-                let sum = entries.reduce(0) { $1.playerId == pid ? $0 + $1.delta : $0 }
+                let sum = entries.reduce(0) { $1.isActive && $1.playerId == pid ? $0 + $1.delta : $0 }
                 if sum != p.score {
                     entries.insert(
                         ScoreEntry(id: PWA.uuid("correction", "\(gameKey):\(p.id)"), playerId: pid, delta: p.score - sum, createdAt: created),
@@ -230,16 +249,18 @@ enum PWA {
             }
 
             let game = PuntentellerKit.Game(
-                id: PWA.uuid("game", gameKey),
+                id: PWA.id("game", gameKey),
                 name: name,
-                profileId: profileId.map { PWA.uuid("profile", $0) },
+                profileId: profileId.map { PWA.id("profile", $0) },
                 rules: rules,
                 players: newPlayers,
                 log: entries,
                 endTurnsLeft: (finished ?? false) ? nil : endTurnsLeft,
                 createdAt: created,
                 updatedAt: lastPlayed,
-                finishedAt: (finished ?? false) ? lastPlayed : nil
+                finishedAt: (finished ?? false) ? lastPlayed : nil,
+                ownerId: ownerId?.lowercased(),
+                participantsCanScore: participantsCanScore ?? false
             )
             return (game, corrections)
         }
@@ -256,6 +277,7 @@ enum PWA {
         let endMode: String?
         let finishRound: Bool?
         let sortPlayers: Bool?
+        let deletedAt: Double?
 
         var rules: GameRules {
             GameRules(
@@ -276,6 +298,7 @@ enum PWA {
         let color: String
         let wins: Int?
         let profileWins: [String: Int]?
+        let accountId: String?
     }
 
     static let supportedVersion = 1
@@ -305,6 +328,14 @@ enum PWA {
     }
 
     static func date(_ ms: Double) -> Date { Date(timeIntervalSince1970: ms / 1000) }
+
+    /// Id voor een PWA-record. De sync-versie van de PWA gebruikt al UUID's:
+    /// die nemen we over (gelijk aan wat de PWA naar de server synct). Oudere
+    /// id's worden deterministisch afgeleid, net als de migratie in de PWA.
+    static func id(_ kind: String, _ raw: String, scope: String? = nil) -> UUID {
+        if let uuid = UUID(uuidString: raw) { return uuid }
+        return uuid(kind, scope.map { "\($0):\(raw)" } ?? raw)
+    }
 
     static func milliseconds(_ date: Date) -> Int64 { Int64((date.timeIntervalSince1970 * 1000).rounded()) }
 
