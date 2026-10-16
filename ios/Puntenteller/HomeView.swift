@@ -1,11 +1,18 @@
 import SwiftUI
 import PuntentellerKit
 
+/// Bestemmingen in de navigatie vanaf het startscherm.
+enum Route: Hashable {
+    case game(UUID)
+    case players
+}
+
 /// Startscherm "Spellen": alle spellen, laatst gespeeld eerst, en "Nieuw spel".
 struct HomeView: View {
     @Environment(GameStore.self) private var store
-    @State private var path: [UUID] = []
+    @State private var path: [Route] = []
     @State private var showNewGame = false
+    @State private var showSettings = false
     @State private var showImport = false
     @State private var importResult: ImportResult?
 
@@ -18,7 +25,7 @@ struct HomeView: View {
                         emptyState
                     } else {
                         ForEach(store.games) { game in
-                            NavigationLink(value: game.id) { GameCard(game: game) }
+                            NavigationLink(value: Route.game(game.id)) { GameCard(game: game) }
                                 .buttonStyle(.plain)
                                 .contextMenu {
                                     Button("Verwijderen", systemImage: "trash", role: .destructive) {
@@ -41,8 +48,21 @@ struct HomeView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
-            .navigationDestination(for: UUID.self) { id in
-                ScoringView(gameId: id)
+            .navigationDestination(for: Route.self) { route in
+                switch route {
+                case .game(let id):
+                    ScoringView(gameId: id) { newId in
+                        // "Opnieuw spelen": vervang het afgeronde spel door het nieuwe.
+                        path.removeLast()
+                        path.append(.game(newId))
+                    }
+                case .players:
+                    PlayersView()
+                }
+            }
+            .sheet(isPresented: $showSettings) {
+                SettingsView { showImport = true }
+                    .presentationDetents([.medium])
             }
             .sheet(isPresented: $showImport, onDismiss: { importResult = nil }) {
                 ImportView(result: importResult)
@@ -61,7 +81,7 @@ struct HomeView: View {
             .fullScreenCover(isPresented: $showNewGame) {
                 NewGameView { game in
                     showNewGame = false
-                    path.append(game.id)
+                    path.append(.game(game.id))
                 }
             }
         }
@@ -79,24 +99,24 @@ struct HomeView: View {
                     .foregroundStyle(Theme.text)
             }
             Spacer()
-            Menu {
-                Button("Importeren uit web-app", systemImage: "square.and.arrow.down") { showImport = true }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Theme.text)
-                    .frame(width: 52, height: 52)
-                    .background(Theme.surface2, in: .rect(cornerRadius: 16))
+            HStack(spacing: 8) {
+                headerButton("gearshape", label: "Instellingen") { showSettings = true }
+                headerButton("person", label: "Spelers") { path.append(.players) }
             }
-            .accessibilityLabel("Meer")
-            Image(systemName: "die.face.5")
-                .font(.system(size: 24, weight: .semibold))
-                .foregroundStyle(Theme.accentText)
-                .frame(width: 52, height: 52)
-                .background(Theme.accent, in: .rect(cornerRadius: 16))
         }
         .padding(.top, 8)
         .padding(.bottom, 8)
+    }
+
+    private func headerButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 19, weight: .semibold))
+                .foregroundStyle(Theme.text)
+                .frame(width: 44, height: 44)
+                .background(Theme.surface2, in: .circle)
+        }
+        .accessibilityLabel(label)
     }
 
     private var emptyState: some View {

@@ -42,6 +42,11 @@ extension Game {
         players.isEmpty ? 0 : activeLog.count / players.count
     }
 
+    /// De ronde die nu gespeeld wordt (1-gebaseerd), alleen bij een max aantal rondes.
+    public var currentRound: Int? {
+        rules.maxRounds.map { min(completedRounds + 1, $0) }
+    }
+
     /// Spelers op stand: oplopend bij `low`, aflopend bij `high`. Bij gelijke
     /// stand blijft de volgorde van `players` staan.
     public var ranked: [Player] {
@@ -156,5 +161,19 @@ public enum Statistics {
         }.count
         let imported = profileId.map { saved.importedProfileWins[$0.uuidString] ?? 0 } ?? saved.importedWins
         return derived + imported
+    }
+
+    /// Bewaarde spelers op aantal overwinningen (meeste eerst, daarna op naam),
+    /// totaal of voor één profiel. Zoals `PlayersScreen.tsx`.
+    public static func leaderboard(
+        _ players: [SavedPlayer], in games: [Game], profileId: UUID? = nil
+    ) -> [(player: SavedPlayer, wins: Int)] {
+        let nl = Locale(identifier: "nl_NL")
+        return players
+            .map { (player: $0, wins: wins(of: $0, in: games, profileId: profileId)) }
+            .sorted { a, b in
+                if a.wins != b.wins { return a.wins > b.wins }
+                return a.player.name.compare(b.player.name, options: .caseInsensitive, locale: nl) == .orderedAscending
+            }
     }
 }

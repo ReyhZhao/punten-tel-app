@@ -59,6 +59,40 @@ public struct AppData: Codable, Hashable, Sendable {
         return game
     }
 
+    /// Spelprofielen die niet verwijderd zijn, in volgorde van aanmaken.
+    public var visibleProfiles: [GameProfile] { gameProfiles.filter { $0.deletedAt == nil } }
+
+    /// Profiel met deze naam (hoofdletterongevoelig, spaties eromheen genegeerd).
+    public func profile(named name: String) -> GameProfile? {
+        let key = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { return nil }
+        return visibleProfiles.first { $0.name.caseInsensitiveCompare(key) == .orderedSame }
+    }
+
+    /// Bewaart spelregels als profiel. Bestaat er al een profiel met die naam,
+    /// dan krijgt dat de nieuwe spelregels.
+    @discardableResult
+    public mutating func saveProfile(name: String, rules: GameRules, at now: Date = .now) -> GameProfile {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let existing = profile(named: trimmed), let i = gameProfiles.firstIndex(where: { $0.id == existing.id }) {
+            gameProfiles[i].rules = rules
+            gameProfiles[i].updatedAt = now
+            return gameProfiles[i]
+        }
+        let profile = GameProfile(name: trimmed, rules: rules, updatedAt: now)
+        gameProfiles.append(profile)
+        return profile
+    }
+
+    /// Start een nieuw spel met dezelfde spelregels en spelers (ADR-0002).
+    @discardableResult
+    public mutating func rematch(_ gameId: UUID, at now: Date = .now) -> Game? {
+        guard let game = game(gameId) else { return nil }
+        let next = game.rematch(at: now)
+        games.append(next)
+        return next
+    }
+
     /// Past een spel aan en geeft het resultaat van `body` terug; nil als het spel niet bestaat.
     @discardableResult
     public mutating func updateGame<T>(_ id: UUID, _ body: (inout Game) -> T) -> T? {

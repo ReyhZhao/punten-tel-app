@@ -38,8 +38,8 @@ final class GameStore {
     func game(_ id: UUID) -> Game? { data.game(id) }
 
     @discardableResult
-    func startGame(name: String, rules: GameRules, playerNames: [String]) -> Game {
-        let game = data.startGame(name: name, rules: rules, playerNames: playerNames)
+    func startGame(name: String, rules: GameRules, playerNames: [String], profileId: UUID? = nil) -> Game {
+        let game = data.startGame(name: name, rules: rules, playerNames: playerNames, profileId: profileId)
         save()
         return game
     }
@@ -64,6 +64,34 @@ final class GameStore {
     func delete(_ gameId: UUID) {
         data.updateGame(gameId) { $0.markDeleted() }
         save()
+    }
+
+    func resetScores(_ gameId: UUID) {
+        data.updateGame(gameId) { $0.resetScores() }
+        save()
+    }
+
+    /// Nieuw spel met dezelfde spelregels en spelers; het oude blijft bewaard.
+    func rematch(_ gameId: UUID) -> Game? {
+        let next = data.rematch(gameId)
+        save()
+        return next
+    }
+
+    var profiles: [GameProfile] { data.visibleProfiles }
+    var savedPlayers: [SavedPlayer] { data.savedPlayers }
+
+    func profile(named name: String) -> GameProfile? { data.profile(named: name) }
+
+    @discardableResult
+    func saveProfile(name: String, rules: GameRules) -> GameProfile {
+        let profile = data.saveProfile(name: name, rules: rules)
+        save()
+        return profile
+    }
+
+    func leaderboard(profileId: UUID?) -> [(player: SavedPlayer, wins: Int)] {
+        Statistics.leaderboard(data.savedPlayers, in: data.games, profileId: profileId)
     }
 
     /// Importeert een export van de web-app. Werkt met bestanden uit de

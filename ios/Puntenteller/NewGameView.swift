@@ -1,8 +1,8 @@
 import SwiftUI
 import PuntentellerKit
 
-/// "Nieuw spel": spelregels kiezen en spelers toevoegen (zie `screens/NewGameScreen.tsx`).
-/// Spelprofielen komen later (docs/ios-port.md).
+/// "Nieuw spel": spelregels kiezen (of een spelprofiel toepassen) en spelers
+/// toevoegen (zie `screens/NewGameScreen.tsx`).
 struct NewGameView: View {
     var onStart: (Game) -> Void
 
@@ -12,6 +12,7 @@ struct NewGameView: View {
     private static let maxPlayers = 8
 
     @State private var name = ""
+    @State private var activeProfile: GameProfile?
     @State private var scoring: Scoring = .high
     @State private var timerOn = false
     @State private var timerSecs = 60
@@ -23,10 +24,40 @@ struct NewGameView: View {
     @State private var sortPlayers = false
     @State private var players: [String] = []
     @State private var draft = ""
+    @FocusState private var nameFocused: Bool
     @FocusState private var draftFocused: Bool
 
-    private var canStart: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty && players.count >= 2
+    private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
+
+    private var canStart: Bool { !trimmedName.isEmpty && players.count >= 2 }
+
+    private var rules: GameRules {
+        GameRules(
+            scoring: scoring,
+            timerOn: timerOn,
+            timerSecs: timerSecs,
+            maxScore: maxScoreOn ? max(1, maxScore) : nil,
+            maxRounds: maxRoundsOn ? max(1, maxRounds) : nil,
+            endMode: endMode,
+            sortPlayers: sortPlayers
+        )
+    }
+
+    /// Profielen die bij de getypte naam passen (alles als het veld leeg is).
+    private var profileSuggestions: [GameProfile] {
+        store.profiles.filter { trimmedName.isEmpty || $0.name.localizedCaseInsensitiveContains(trimmedName) }
+    }
+
+    /// Alleen aanbieden als er nog geen profiel met deze naam is.
+    private var isNewProfile: Bool { !trimmedName.isEmpty && store.profile(named: trimmedName) == nil }
+
+    /// Bewaarde spelers die nog niet meedoen en bij de getypte naam passen.
+    private var playerSuggestions: [SavedPlayer] {
+        let draftKey = draft.trimmingCharacters(in: .whitespaces)
+        return store.savedPlayers.filter { saved in
+            !players.contains { $0.caseInsensitiveCompare(saved.name) == .orderedSame }
+                && (draftKey.isEmpty || saved.name.localizedCaseInsensitiveContains(draftKey))
+        }
     }
 
     var body: some View {
@@ -53,6 +84,9 @@ struct NewGameView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     nameSection
+                    if isNewProfile {
+                        saveProfileButton
+                    }
                     scoringSection
                     timerSection
                     maxScoreSection
@@ -81,25 +115,92 @@ struct NewGameView: View {
                 }
             }
         }
+        .onChange(of: name) { _, new in
+            // Zelf typen maakt het gekozen profiel los, zoals in de PWA.
+            if let activeProfile, new != activeProfile.name { self.activeProfile = nil }
+        }
         .animation(.snappy, value: timerOn)
         .animation(.snappy, value: maxScoreOn)
         .animation(.snappy, value: maxRoundsOn)
         .animation(.snappy, value: players)
+        .animation(.snappy, value: nameFocused)
+        .animation(.snappy, value: draftFocused)
+        .animation(.snappy, value: activeProfile?.id)
     }
 
-    // MARK: - Onderdelen
+    // MARK: - Naam / profiel
 
     private var nameSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionLabel("Naam van het spel")
-            TextField("bijv. Spelavond, Rummikub…", text: $name)
-                .font(.system(size: 17))
-                .textInputAutocapitalization(.sentences)
-                .padding(.horizontal, 16)
-                .frame(height: 54)
+            SectionLabel("Naam / profiel")
+            HStack(spacing: 10) {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(activeProfile != nil ? Theme.positive : Theme.faint)
+                TextField("Zoek profiel of typ speltype…", text: $name)
+                    .font(.system(size: 17))
+                    .textInputAutocapitalization(.sentences)
+                    .focused($nameFocused)
+                    .submitLabel(.done)
+                if activeProfile != nil {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(Theme.positive)
+                }
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 54)
+            .card(radius: 16)
+
+            if nameFocused && !profileSuggestions.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    SectionLabel("Profielen")
+                        .padding(.horizontal, 16)
+                        .padding(.top, 12)
+                        .padding(.bottom, 4)
+                    ForEach(profileSuggestions) { profile in
+                        Button { apply(profile) } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(profile.name)
+                                    .font(Theme.display(16))
+                                    .foregroundStyle(Theme.text)
+                                BadgeRow(badges: profile.rules.badges)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .contentShape(.rect)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.bottom, 6)
                 .card(radius: 16)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
+            if let activeProfile {
+                BadgeRow(badges: rules.badges)
+                    .padding(.leading, 4)
+                    .accessibilityLabel("Profiel \(activeProfile.name) toegepast")
+            }
         }
     }
+
+    private var saveProfileButton: some View {
+        Button {
+            activeProfile = store.saveProfile(name: trimmedName, rules: rules)
+        } label: {
+            Label("Bewaar \"\(trimmedName)\" als profiel", systemImage: "sparkles")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Theme.accent)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .background(Theme.accent.opacity(0.1), in: .capsule)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Spelregels
 
     private var scoringSection: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -205,6 +306,8 @@ struct NewGameView: View {
         )
     }
 
+    // MARK: - Spelers
+
     private var playersSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -240,8 +343,8 @@ struct NewGameView: View {
                     TextField("Naam speler toevoegen", text: $draft)
                         .focused($draftFocused)
                         .submitLabel(.next)
-                        .onSubmit(addPlayer)
-                    Button(action: addPlayer) {
+                        .onSubmit { addPlayer(draft) }
+                    Button { addPlayer(draft) } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(Theme.accentText)
@@ -254,6 +357,35 @@ struct NewGameView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 .background(Theme.surface2, in: .rect(cornerRadius: 16))
+
+                if draftFocused && !playerSuggestions.isEmpty {
+                    VStack(alignment: .leading, spacing: 0) {
+                        SectionLabel("Eerder gespeeld")
+                            .padding(.horizontal, 16)
+                            .padding(.top, 12)
+                            .padding(.bottom, 4)
+                        ForEach(playerSuggestions.prefix(6)) { saved in
+                            Button { addPlayer(saved.name) } label: {
+                                HStack(spacing: 12) {
+                                    PlayerAvatar(name: saved.name, color: saved.color, size: 30)
+                                    Text(saved.name)
+                                        .font(Theme.display(16))
+                                        .foregroundStyle(Theme.text)
+                                    Spacer()
+                                    Image(systemName: "plus.circle.fill")
+                                        .foregroundStyle(Theme.accent)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .contentShape(.rect)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.bottom, 6)
+                    .card(radius: 16)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
             }
         }
     }
@@ -262,9 +394,26 @@ struct NewGameView: View {
 
     private var draftTrimmed: String { draft.trimmingCharacters(in: .whitespaces) }
 
-    private func addPlayer() {
-        guard !draftTrimmed.isEmpty, players.count < Self.maxPlayers else { return }
-        players.append(draftTrimmed)
+    private func apply(_ profile: GameProfile) {
+        activeProfile = profile
+        name = profile.name
+        let r = profile.rules
+        scoring = r.scoring
+        timerOn = r.timerOn
+        timerSecs = r.timerSecs
+        maxScoreOn = r.maxScore != nil
+        maxScore = r.maxScore ?? 100
+        maxRoundsOn = r.maxRounds != nil
+        maxRounds = r.maxRounds ?? 10
+        endMode = r.endMode
+        sortPlayers = r.sortPlayers
+        nameFocused = false
+    }
+
+    private func addPlayer(_ raw: String) {
+        let name = raw.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty, players.count < Self.maxPlayers else { return }
+        players.append(name)
         draft = ""
         // Toetsenbord open laten zodat je snel de volgende speler typt.
         draftFocused = players.count < Self.maxPlayers
@@ -272,16 +421,10 @@ struct NewGameView: View {
 
     private func start() {
         guard canStart else { return }
-        let rules = GameRules(
-            scoring: scoring,
-            timerOn: timerOn,
-            timerSecs: timerSecs,
-            maxScore: maxScoreOn ? max(1, maxScore) : nil,
-            maxRounds: maxRoundsOn ? max(1, maxRounds) : nil,
-            endMode: endMode,
-            sortPlayers: sortPlayers
-        )
-        onStart(store.startGame(name: name, rules: rules, playerNames: players))
+        // Koppel aan het gekozen profiel, of aan een profiel met dezelfde naam
+        // (voor de winst-statistiek per speltype), zoals de PWA.
+        let profileId = activeProfile?.id ?? store.profile(named: trimmedName)?.id
+        onStart(store.startGame(name: trimmedName, rules: rules, playerNames: players, profileId: profileId))
     }
 }
 
@@ -341,5 +484,5 @@ extension EndMode {
 
 #Preview {
     NewGameView { _ in }
-        .environment(GameStore(fileURL: nil))
+        .environment(GameStore.preview)
 }

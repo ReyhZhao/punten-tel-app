@@ -19,15 +19,15 @@ Het gewenste gedrag staat in de PWA (`frontend/`) en in
 |------------------------------------------|--------------------------|--------|
 | `store.ts` — opslag in `localStorage`     | `AppData` (Kit) + `GameStore` (@Observable), JSON in Application Support | ✅ |
 | `screens/HomeScreen.tsx`                  | `HomeView`               | ✅ (verwijderen via lang drukken) |
-| `screens/NewGameScreen.tsx` (+ profielen) | `NewGameView`            | ◐ alles behalve spelprofielen en bewaarde spelers kiezen |
-| `screens/ScoringScreen.tsx`               | `ScoringView`            | ◐ basis: +/−, selectie, ranglijst, max-melding, menu (undo laatste, beëindigen, verwijderen); nog zonder zwevende +N |
-| `game/TurnTimer.tsx`                      | `TurnTimerView`          | ☐ |
-| `game/HistorySheet.tsx`                   | `.sheet` met `HistoryView` | ☐ (nu alleen undo van de laatste boeking via het menu) |
-| `game/ActionSheet.tsx`                    | `.confirmationDialog` / `Menu` | ☐ |
-| `screens/WinnerScreen.tsx` + `ui/Confetti.tsx` | `WinnerView` (Canvas/TimelineView-confetti) | ☐ (nu een eenvoudige winnaarskaart in `ScoringView`) |
-| `screens/PlayersScreen.tsx`               | `PlayersView`            | ☐ |
-| `SettingsSheet.tsx`                       | `SettingsView`           | ☐ |
-| `hooks/useWakeLock.ts`                    | `UIApplication.shared.isIdleTimerDisabled` | ☐ |
+| `screens/NewGameScreen.tsx` (+ profielen) | `NewGameView`            | ✅ profiel zoeken/toepassen/bewaren, bewaarde spelers als suggestie |
+| `screens/ScoringScreen.tsx`               | `ScoringView`            | ✅ ronde, max-melding, zwevende +N/−N, menu |
+| `game/TurnTimer.tsx`                      | `TurnTimerView` (in `ScoringView`) | ✅ (+ schudden en trillen bij 0) |
+| `game/HistorySheet.tsx`                   | `HistoryView` (sheet)    | ✅ |
+| `game/ActionSheet.tsx`                    | `Menu` + `confirmationDialog` | ✅ (bevestiging bij resetten en verwijderen) |
+| `screens/WinnerScreen.tsx` + `ui/Confetti.tsx` | `WinnerView` + `ConfettiView` | ✅ ("Opnieuw spelen" maakt een nieuw spel, ADR-0002) |
+| `screens/PlayersScreen.tsx`               | `PlayersView`            | ✅ |
+| `SettingsSheet.tsx`                       | `SettingsView`           | ✅ (+ importeren uit web-app) |
+| `hooks/useWakeLock.ts`                    | `isIdleTimerDisabled` via `@AppStorage("keepAwake")` | ✅ |
 | `InstallGuide` / `InstallPrompt` / `pwa.ts` | — alleen PWA            | n.v.t. |
 
 Nog nodig:
@@ -36,7 +36,7 @@ Nog nodig:
 - [x] App-icoon 1024×1024 zonder transparantie, gegenereerd uit `frontend/public/pwa-icon.svg`
 - [ ] Optioneel: donkere en getinte varianten van het app-icoon (iOS 18+)
 - [x] Haptics bij +/− en bij het einde van het spel
-- [ ] Haptics bij het einde van de timer
+- [x] Haptics bij het einde van de timer
 - [x] Export uit de PWA (Instellingen → Exporteren naar iOS-app) en import in de iOS-app (deelmenu of bestandskiezer), zie `PWAImport.swift`
 
 ## Fase 2 — App Store
