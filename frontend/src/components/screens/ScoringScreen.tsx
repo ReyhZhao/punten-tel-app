@@ -8,6 +8,7 @@ import PlayerAvatar from '../ui/PlayerAvatar';
 import TurnTimer from '../game/TurnTimer';
 import HistorySheet from '../game/HistorySheet';
 import ActionSheet from '../game/ActionSheet';
+import ShareSheet from '../ShareSheet';
 
 interface FloatEntry {
   key: string;
@@ -27,6 +28,7 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
   const owner = isOwner(game, sync.accountId);
   const mayScore = canScore(game, sync.accountId);
   const [leaveError, setLeaveError] = useState<string | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [amount, setAmount] = useState('1');
   const [selectedId, setSelectedId] = useState<string | null>(game.players[0]?.id ?? null);
   const [floats, setFloats] = useState<FloatEntry[]>([]);
@@ -547,6 +549,7 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
         onUndo={(id) => actions.undoLog(game.id, id)}
         canUndo={mayScore}
       />
+      {shareOpen && <ShareSheet theme={t} game={game} actions={actions} onClose={() => setShareOpen(false)} />}
       <ActionSheet
         theme={t}
         open={menuOpen}
@@ -563,6 +566,11 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
             icon: 'list',
             onClick: () => setHistoryOpen(true),
           },
+          ...(owner && sync.account ? [{
+            label: 'Spelers en delen',
+            icon: 'person' as const,
+            onClick: () => setShareOpen(true),
+          }] : []),
           ...(owner ? [
             {
               label: 'Scores resetten',

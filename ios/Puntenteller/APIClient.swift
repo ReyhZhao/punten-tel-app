@@ -70,6 +70,14 @@ struct APIClient: Sendable {
         try await send("POST", "sync", body: request)
     }
 
+    func transfer(gameId: UUID, to accountId: String, ownerPlayerId: UUID?) async throws {
+        struct Body: Encodable { var accountId: String; var ownerPlayerId: String? }
+        let _: Empty = try await send(
+            "POST", "games/\(gameId.uuidString.lowercased())/transfer",
+            body: Body(accountId: accountId, ownerPlayerId: ownerPlayerId?.uuidString.lowercased())
+        )
+    }
+
     func leave(gameId: UUID) async throws {
         let _: Empty = try await send("POST", "games/\(gameId.uuidString.lowercased())/leave")
     }

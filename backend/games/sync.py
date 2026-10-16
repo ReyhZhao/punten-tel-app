@@ -228,10 +228,13 @@ def _collect(user, cursor: int, new_cursor: int) -> SyncResult:
     entries = list(
         ScoreEntry.objects.filter(game_id__in=visible_ids).filter(changed | Q(game_id__in=granted_ids))
     )
-    # Eigen profielen, plus (alleen-lezen) de profielen van gedeelde spellen die meekomen.
-    shared_profile_ids = {g.profile_id for g in games if g.profile_id and g.owner_id != user.pk}
+    # Eigen profielen, plus (alleen-lezen) profielen van anderen bij spellen die
+    # meekomen (gedeeld spel, of een spel dat aan jou is overgedragen).
+    referenced = {g.profile_id for g in games if g.profile_id}
     profiles = list(
-        GameProfile.objects.filter(Q(owner=user, revision__gt=cursor) | Q(id__in=shared_profile_ids))
+        GameProfile.objects.filter(
+            Q(owner=user, revision__gt=cursor) | (Q(id__in=referenced) & ~Q(owner=user))
+        )
     )
 
     account_ids = {g.owner_id for g in games} | {p.account_id for p in players if p.account_id}
@@ -251,6 +254,51 @@ def _collect(user, cursor: int, new_cursor: int) -> SyncResult:
         removed_game_ids=sorted(str(i) for i in removed_ids),
         accounts=accounts,
     )
+
+
+class TransferError(Exception):
+    def __init__(self, code: str, detail: str):
+        super().__init__(detail)
+        self.code = code
+        self.detail = detail
+
+
+def transfer(user, game: Game, new_owner_id, owner_player_id=None) -> None:
+    """
+    Draagt een spel over aan een gekoppelde speler. De oude eigenaar blijft
+    meedoen; daarvoor moet hij aan een speler gekoppeld zijn. Is dat nog niet
+    zo, dan geeft hij met `owner_player_id` aan welke (niet-gekoppelde) speler
+    hij is.
+    """
+    if game.owner_id != user.pk:
+        raise TransferError("forbidden", "Alleen de eigenaar kan het spel overdragen.")
+    if str(new_owner_id) == str(user.pk):
+        raise TransferError("already_owner", "Je bent al de eigenaar.")
+    if not Player.objects.filter(game=game, account_id=new_owner_id).exists():
+        raise TransferError(
+            "not_a_participant", "Je kunt het spel alleen overdragen aan een uitgenodigde speler."
+        )
+
+    with transaction.atomic():
+        revisions = RevisionAllocator()
+        if not Player.objects.filter(game=game, account=user).exists():
+            own = Player.objects.select_for_update().filter(
+                game=game, pk=owner_player_id, account__isnull=True
+            ).first() if owner_player_id else None
+            if own is None:
+                raise TransferError(
+                    "owner_player_required",
+                    "Kies eerst welke speler jij bent, zodat je het spel blijft zien.",
+                )
+            own.account = user
+            own.updated_at = timezone.now()
+            own.revision = revisions.get()
+            own.save(update_fields=["account", "updated_at", "revision"])
+
+        game.owner_id = new_owner_id
+        game.updated_at = timezone.now()
+        game.revision = revisions.get()
+        game.save(update_fields=["owner", "updated_at", "revision"])
 
 
 def leave(user, game: Game) -> None:

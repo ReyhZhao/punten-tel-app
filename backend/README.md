@@ -56,6 +56,7 @@ e-mailadres per uur. Daarnaast geldt een limiet per IP-adres.
 |---------|-----|------|
 | `POST` | `/api/v1/accounts/lookup` | `{email}` → `{id, displayName}`, alleen bij een exacte match met een bevestigd account. De app bewaart `id` als `SavedPlayer.accountId` |
 | `POST` | `/api/v1/games/{id}/leave` | Jezelf uit een gedeeld spel halen |
+| `POST` | `/api/v1/games/{id}/transfer` | Eigenaar: `{accountId, ownerPlayerId?}` draagt het spel over aan een gekoppelde speler. Ben je zelf nog niet aan een speler gekoppeld, geef dan met `ownerPlayerId` aan welke speler jij bent (anders `400 owner_player_required`), zodat je het spel blijft zien |
 
 Uitnodigen gaat via de sync: de eigenaar zet `accountId` op een speler.
 Ontkoppelen doet hij door `accountId` weer op `null` te zetten.

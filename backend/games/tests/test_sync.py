@@ -248,3 +248,57 @@ class ProfileTests(SyncTestCase):
 
         body = self.invitee.sync(gameProfiles=[{"id": pr, "name": "Mijn golf", "rules": RULES, "updatedAt": ts(9)}])
         self.assertEqual(body["rejected"][0]["reason"], "forbidden")
+
+
+class TransferTests(SyncTestCase):
+    def transfer(self, device, body):
+        return device.client.post(f"/api/v1/games/{self.g}/transfer", body, format="json")
+
+    def test_owner_transfers_to_participant_and_keeps_playing(self):
+        self.create_game(bram_account=str(self.bram.pk))  # Anna is gekoppeld aan haar speler
+        self.owner.sync()
+        self.invitee.sync()
+        r = self.transfer(self.owner, {"accountId": str(self.bram.pk)})
+        self.assertEqual(r.status_code, 204)
+
+        got = self.invitee.sync()["changes"]["games"][0]
+        self.assertEqual(got["ownerId"], str(self.bram.pk))
+        # Anna ziet het spel nog (als deelnemer) en kan de spelers niet meer wijzigen.
+        anna = self.owner.sync()
+        self.assertEqual(anna["changes"]["games"][0]["ownerId"], str(self.bram.pk))
+        body = self.owner.sync(players=[player(self.p_bram, self.g, "X", 1, minutes=60)])
+        self.assertEqual(body["rejected"][0]["reason"], "forbidden")
+        # Bram kan nu als eigenaar de instellingen wijzigen.
+        later = (datetime.now(timezone.utc) - T0).total_seconds() / 60 + 1
+        body = self.invitee.sync(games=[game(self.g, minutes=later, participantsCanScore=True)])
+        self.assertEqual(body["rejected"], [])
+
+    def test_owner_without_player_must_pick_one(self):
+        self.owner.sync(
+            games=[game(self.g)],
+            players=[player(self.p_anna, self.g, "Anna", 0), player(self.p_bram, self.g, "Bram", 1, account=str(self.bram.pk))],
+        )
+        r = self.transfer(self.owner, {"accountId": str(self.bram.pk)})
+        self.assertEqual(r.json()["code"], "owner_player_required")
+        r = self.transfer(self.owner, {"accountId": str(self.bram.pk), "ownerPlayerId": self.p_anna})
+        self.assertEqual(r.status_code, 204)
+        players = {p["id"]: p for p in self.owner.sync()["changes"]["players"]}
+        self.assertEqual(players[self.p_anna]["accountId"], str(self.anna.pk))
+        self.assertEqual(self.owner.sync()["removedGameIds"], [])
+
+    def test_only_to_linked_players_and_only_by_owner(self):
+        self.create_game(bram_account=str(self.bram.pk))
+        cas = make_user("Cas")
+        self.assertEqual(self.transfer(self.owner, {"accountId": str(cas.pk)}).json()["code"], "not_a_participant")
+        self.assertEqual(self.transfer(self.owner, {"accountId": str(self.anna.pk)}).json()["code"], "already_owner")
+        self.assertEqual(self.transfer(self.invitee, {"accountId": str(self.bram.pk)}).status_code, 403)
+        self.assertEqual(self.transfer(Device(cas), {"accountId": str(cas.pk)}).status_code, 404)
+
+    def test_new_owner_receives_profile_read_only(self):
+        pr = uid()
+        self.owner.sync(gameProfiles=[{"id": pr, "name": "Golf", "rules": RULES, "updatedAt": ts(0)}])
+        self.create_game(bram_account=str(self.bram.pk), profileId=pr)
+        self.invitee.sync()
+        self.transfer(self.owner, {"accountId": str(self.bram.pk)})
+        got = self.invitee.sync()["changes"]["gameProfiles"]
+        self.assertEqual([p["id"] for p in got], [pr])

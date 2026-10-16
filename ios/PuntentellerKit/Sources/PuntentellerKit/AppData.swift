@@ -96,6 +96,26 @@ public struct AppData: Codable, Hashable, Sendable {
         return game
     }
 
+    /// Eigenaar: mogen alle (gekoppelde) spelers scores invoeren?
+    public mutating func setParticipantsCanScore(_ on: Bool, in gameId: UUID, at now: Date = .now) {
+        updateGame(gameId) { game in
+            game.participantsCanScore = on
+            game.updatedAt = now
+        }
+    }
+
+    /// Eigenaar: een speler in een spel aan een account koppelen (uitnodigen) of
+    /// ontkoppelen (nil). Het account wordt ook bij de bewaarde speler onthouden.
+    public mutating func linkPlayer(_ playerId: UUID, to accountId: String?, in gameId: UUID, at now: Date = .now) {
+        let name: String? = updateGame(gameId) { game in
+            guard let i = game.players.firstIndex(where: { $0.id == playerId }) else { return nil }
+            game.players[i].accountId = accountId
+            game.players[i].updatedAt = now
+            return game.players[i].name
+        } ?? nil
+        if let name, accountId != nil { setAccount(accountId, forSavedPlayerNamed: name) }
+    }
+
     /// Onthoud bij een bewaarde speler welk account erbij hoort (na opzoeken op e-mail).
     public mutating func setAccount(_ accountId: String?, forSavedPlayerNamed name: String) {
         guard let i = savedPlayers.firstIndex(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) else { return }

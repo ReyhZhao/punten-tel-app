@@ -203,3 +203,32 @@ private let sharedGameJSON = """
         #expect(decoded.sync.cursor == nil)
     }
 }
+
+@Suite struct SharingEditTests {
+    @Test func linkingAPlayerMarksTheGameAndRemembersTheAccount() throws {
+        var data = AppData()
+        let g = data.startGame(name: "x", rules: GameRules(), playerNames: ["Anna", "Bram"])
+        data.sync.dirtyGames = [:]
+        let later = Date.now.addingTimeInterval(60)
+        data.linkPlayer(g.players[1].id, to: anna, in: g.id, at: later)
+        let game = try #require(data.game(g.id))
+        #expect(game.players[1].accountId == anna)
+        #expect(game.players[1].updatedAt == later)
+        #expect(data.sync.dirtyGames[g.id] != nil)
+        #expect(data.savedPlayers.first { $0.name == "Bram" }?.accountId == anna)
+        // Ontkoppelen laat de bewaarde speler zijn account houden (voor later opnieuw uitnodigen).
+        data.linkPlayer(g.players[1].id, to: nil, in: g.id)
+        #expect(data.game(g.id)?.players[1].accountId == nil)
+        #expect(data.savedPlayers.first { $0.name == "Bram" }?.accountId == anna)
+    }
+
+    @Test func participantsCanScoreIsSentWithANewerTimestamp() throws {
+        var data = AppData()
+        let g = data.startGame(name: "x", rules: GameRules(), playerNames: ["a", "b"])
+        let later = g.updatedAt.addingTimeInterval(5)
+        data.setParticipantsCanScore(true, in: g.id, at: later)
+        let dto = try #require(data.syncRequest(me: me).0.changes.games.first)
+        #expect(dto.participantsCanScore)
+        #expect(dto.updatedAt == later)
+    }
+}

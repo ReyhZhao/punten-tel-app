@@ -116,6 +116,16 @@ final class GameStore {
         save()
     }
 
+    func setParticipantsCanScore(_ on: Bool, in gameId: UUID) {
+        data.setParticipantsCanScore(on, in: gameId)
+        save()
+    }
+
+    func linkPlayer(_ playerId: UUID, to accountId: String?, in gameId: UUID) {
+        data.linkPlayer(playerId, to: accountId?.lowercased(), in: gameId)
+        save()
+    }
+
     func resetScores(_ gameId: UUID) {
         data.updateGame(gameId) { $0.resetScores() }
         save()

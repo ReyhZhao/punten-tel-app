@@ -34,6 +34,12 @@ op hun eigen telefoon zien en desgewenst zelf scores bijhouden.
   zien het spel alleen, tenzij de eigenaar **"deelnemers mogen scores
   bijhouden"** (`participantsCanScore`) aanzet. Dan mogen ze boeken, boekingen
   ongedaan maken en de spelstatus bijwerken (einde van het spel).
+- **Eigenaar overdragen:** de eigenaar kan een spel overdragen aan een
+  uitgenodigde speler (`games/{id}/transfer`). Dat gaat via een eigen endpoint
+  en niet via de sync, zodat last-writer-wins het niet kan terugdraaien. De
+  oude eigenaar blijft meespelen; daarvoor koppelt hij zich zo nodig eerst aan
+  een speler. "Deelnemers mogen scores bijhouden" kan ook in een lopend spel
+  aan of uit.
 - **Spelprofielen** syncen tussen je eigen toestellen. Bij een gedeeld spel
   krijgen deelnemers het profiel alleen-lezen mee.
 - **Sync** via één endpoint met een cursor. Een globale revisieteller zorgt

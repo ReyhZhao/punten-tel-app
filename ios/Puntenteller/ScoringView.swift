@@ -38,6 +38,7 @@ private struct ScoringContent: View {
     @Environment(\.dismiss) private var dismiss
     @State private var amount: Int? = 1
     @State private var confirmLeave = false
+    @State private var showSharing = false
     @State private var leaveError: String?
     @State private var selectedId: UUID?
     @State private var floats: [FloatEntry] = []
@@ -120,6 +121,7 @@ private struct ScoringContent: View {
         } message: {
             Text("Alle standen gaan terug naar 0.")
         }
+        .sheet(isPresented: $showSharing) { SharingView(gameId: game.id) }
         .confirmationDialog("Spel verlaten?", isPresented: $confirmLeave, titleVisibility: .visible) {
             Button("Verlaten", role: .destructive) {
                 Task {
@@ -179,6 +181,9 @@ private struct ScoringContent: View {
                     Button("Beëindig spel & toon winnaar", systemImage: "flag.checkered") { store.finish(game.id) }
                 }
                 Button("Historie bekijken", systemImage: "list.bullet") { showHistory = true }
+                if isOwner && sync.isSignedIn {
+                    Button("Spelers en delen", systemImage: "person.2") { showSharing = true }
+                }
                 if isOwner {
                     Button("Scores resetten", systemImage: "arrow.counterclockwise") { confirmReset = true }
                     Button("Spel verwijderen", systemImage: "trash", role: .destructive) { confirmDelete = true }

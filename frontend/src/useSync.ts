@@ -143,6 +143,13 @@ export function useSync(st: AppState, setSt: (fn: (s: AppState) => AppState) => 
     lookup: (email: string) =>
       api<{ id: string; displayName: string }>('POST', 'accounts/lookup', { email }, token),
 
+    /** Eigenaar overdragen. Eerst syncen (net uitgenodigde spelers), daarna opnieuw. */
+    transfer: async (gameId: string, accountId: string, ownerPlayerId?: string | null) => {
+      await syncNow();
+      await api('POST', `games/${gameId}/transfer`, { accountId, ownerPlayerId: ownerPlayerId ?? null }, token);
+      await syncNow();
+    },
+
     leave: async (gameId: string) => {
       await api('POST', `games/${gameId}/leave`, undefined, token);
       setSt((s) => ({ ...s, games: s.games.filter((g) => g.id !== gameId), screen: 'home', currentId: null }));

@@ -362,6 +362,28 @@ export function useAppState() {
 
     setKeepAwake: (on: boolean) => setSt((s) => ({ ...s, keepAwake: on })),
 
+    /** Eigenaar: mogen alle (gekoppelde) spelers scores invoeren? */
+    setParticipantsCanScore: (gameId: string, on: boolean) =>
+      setSt((s) => withGame(s, gameId, (g) => ({ ...g, participantsCanScore: on, lastPlayed: Date.now() }))),
+
+    /** Eigenaar: speler aan een account koppelen (uitnodigen) of ontkoppelen (null). */
+    linkPlayer: (gameId: string, playerId: string, accountId: string | null) =>
+      setSt((s) => {
+        const g = s.games.find((x) => x.id === gameId);
+        const name = g?.players.find((p) => p.id === playerId)?.name;
+        const next = withGame(s, gameId, (game) => ({
+          ...game,
+          players: game.players.map((p) => (p.id === playerId ? { ...p, accountId, updatedAt: Date.now() } : p)),
+        }));
+        if (!name || !accountId) return next;
+        return {
+          ...next,
+          savedPlayers: next.savedPlayers.map((sp) =>
+            sp.name.toLowerCase() === name.toLowerCase() ? { ...sp, accountId } : sp
+          ),
+        };
+      }),
+
     rememberAccount: (playerName: string, accountId: string | null) =>
       setSt((s) => ({
         ...s,

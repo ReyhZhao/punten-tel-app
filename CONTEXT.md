@@ -34,4 +34,5 @@ in code gebruiken we de Engelse naam uit de tweede kolom.
 | **Deelnemer**     | gekoppelde `Player` | Uitgenodigd account; ziet het spel en de uitslag. |
 | **Deelnemers mogen scores bijhouden** | `participantsCanScore` | Instelling per spel: deelnemers mogen dan ook boeken. |
 | **Spel verlaten** | `leave`      | Een deelnemer haalt zichzelf uit een gedeeld spel. |
+| **Eigenaar overdragen** | `transfer` | De eigenaar maakt een uitgenodigde speler eigenaar; zelf blijft hij meespelen. |
 | **Sync**          | `POST /api/v1/sync` | Eigen wijzigingen sturen en die van anderen ophalen, vanaf een cursor. |

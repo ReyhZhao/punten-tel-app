@@ -85,6 +85,14 @@ final class SyncEngine {
         try await api.lookup(email: email)
     }
 
+    /// Eigenaar overdragen. Eerst syncen, zodat net uitgenodigde spelers ook op
+    /// de server gekoppeld zijn; daarna syncen voor de nieuwe eigenaar.
+    func transfer(_ gameId: UUID, to accountId: String, ownerPlayerId: UUID?) async throws {
+        await syncNow()
+        try await api.transfer(gameId: gameId, to: accountId, ownerPlayerId: ownerPlayerId)
+        await syncNow()
+    }
+
     func leave(_ gameId: UUID) async throws {
         try await api.leave(gameId: gameId)
         store.removeLocally(gameId)

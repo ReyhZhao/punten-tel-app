@@ -52,6 +52,28 @@ class AccountLookupView(APIView):
         return Response({"id": str(user.pk), "displayName": user.display_name})
 
 
+class TransferSerializer(serializers.Serializer):
+    accountId = serializers.UUIDField()
+    ownerPlayerId = serializers.UUIDField(required=False, allow_null=True)
+
+
+class TransferGameView(APIView):
+    """Eigenaar overdragen aan een uitgenodigde speler."""
+
+    def post(self, request, game_id):
+        game = get_object_or_404(visible_games(request.user), pk=game_id)
+        data = TransferSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        try:
+            sync_service.transfer(
+                request.user, game, data.validated_data["accountId"], data.validated_data.get("ownerPlayerId")
+            )
+        except sync_service.TransferError as e:
+            code = status.HTTP_403_FORBIDDEN if e.code == "forbidden" else status.HTTP_400_BAD_REQUEST
+            return Response({"code": e.code, "detail": e.detail}, status=code)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class LeaveGameView(APIView):
     def post(self, request, game_id):
         game = get_object_or_404(visible_games(request.user), pk=game_id)

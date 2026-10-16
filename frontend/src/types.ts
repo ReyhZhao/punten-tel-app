@@ -152,4 +152,6 @@ export interface Actions {
   setKeepAwake: (on: boolean) => void;
   /** Onthoud het account bij een bewaarde speler (na opzoeken op e-mail). */
   rememberAccount: (playerName: string, accountId: string | null) => void;
+  setParticipantsCanScore: (gameId: string, on: boolean) => void;
+  linkPlayer: (gameId: string, playerId: string, accountId: string | null) => void;
 }

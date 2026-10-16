@@ -58,5 +58,6 @@ Nog nodig:
 - [x] Gedeelde spellen tonen ("Gedeeld door …"), alleen bekijken als scoren niet mag; spel verlaten
 - [x] Syncen bij openen, elke 20 s op de voorgrond, na wijzigingen en met pull-to-refresh
 - [x] Zelfde functionaliteit in de PWA (`frontend/src/sync.ts`, `useSync.ts`)
+- [x] Spelers uitnodigen in een lopend spel, "Alle spelers mogen scores invoeren" en eigenaar overdragen (Spelers en delen)
+- [ ] Realtime updates via SSE (onderzocht: `docs/research/sse-realtime-updates.md`)
 - [ ] Meldingen (push) bij een nieuw gedeeld spel
-- [ ] Spelers uitnodigen in een lopend spel (nu alleen bij het aanmaken)
