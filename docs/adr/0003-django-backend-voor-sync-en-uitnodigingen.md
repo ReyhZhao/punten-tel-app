@@ -69,6 +69,10 @@ op hun eigen telefoon zien en desgewenst zelf scores bijhouden.
   Daarvoor is er `DELETE /api/v1/me`. Deelnemers verliezen dan de spellen van
   dat account.
 - **iOS-app en PWA** hebben dezelfde sync-logica: `Sync.swift` en
-  `frontend/src/sync.ts`. Ze syncen bij openen, elke 20 seconden op de
-  voorgrond, kort na een wijziging, en met pull-to-refresh (iOS).
+  `frontend/src/sync.ts`.
+- **Realtime:** via een SSE-stream (`/api/v1/events`) krijgen ze een seintje
+  zodra een medespeler iets wijzigt, en syncen ze binnen ongeveer een
+  seconde. Polling blijft als vangnet: elke 60 s met een open stream, anders
+  elke 20 s. Daarvoor draait de backend onder uvicorn (ASGI); zie
+  `docs/research/sse-realtime-updates.md`.
 - **Nog niet gebouwd:** meldingen (push) bij een nieuw gedeeld spel.

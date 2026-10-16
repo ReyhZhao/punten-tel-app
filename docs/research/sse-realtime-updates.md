@@ -1,6 +1,12 @@
 # Onderzoek: realtime score-updates met Server-Sent Events (SSE)
 
 - **Datum:** 2026-10-16
+- **Status:** gebouwd volgens dit ontwerp (`backend/games/events.py`,
+  `SyncEngine.swift`, `frontend/src/useSync.ts`). Gemeten van begin tot eind,
+  met een boeking door een medespeler tot de nieuwe stand in de andere app:
+  PWA 0,6–1,3 s, iOS 0,4–1,6 s. Daarin zit de bewuste willekeurige
+  vertraging van 0,2–1,5 s. In de container met 2 uvicorn-workers kwamen 60
+  van de 60 seintjes aan.
 - **Vraag:** Kunnen we SSE gebruiken, zodat medespelers een boeking direct
   zien in plaats van na de volgende poll (nu elke 20 seconden)?
 - **Conclusie:** **Ja.** SSE past goed als *seintje*: de server meldt alleen
