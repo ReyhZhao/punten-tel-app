@@ -4,6 +4,9 @@ metadata:
   name: punten-tel
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
     # Uncomment if using cert-manager for TLS:
     # cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:

@@ -25,6 +25,7 @@ from django.utils import timezone
 
 from . import serializers as wire
 from .access import can_score, has_access, record_access, visible_games
+from .events import notify
 from .models import Game, GameAccessEvent, GameProfile, Player, ScoreEntry
 from .revisions import RevisionAllocator, current_revision
 
@@ -62,6 +63,10 @@ def sync(user, cursor: int | None, changes: dict) -> SyncResult:
         applier = _Applier(user)
         applier.apply(changes)
         new_cursor = applier.revisions.used or current_revision()
+        if applier.revisions.used:
+            # Realtime-seintje aan iedereen die het raakt, pas na de commit.
+            users = _accounts_with_access(applier.touched_games) | applier.lost_access
+            transaction.on_commit(lambda: notify(users, new_cursor))
         result = _collect(user, cursor, new_cursor)
         result.rejected = applier.rejected
     return result
@@ -72,6 +77,9 @@ class _Applier:
         self.user = user
         self.revisions = RevisionAllocator()
         self.rejected: list[Rejection] = []
+        # Voor de realtime-seintjes: gewijzigde spellen en wie toegang verloor.
+        self.touched_games: set = set()
+        self.lost_access: set = set()
 
     def reject(self, type_: str, id_, reason: str) -> None:
         self.rejected.append(Rejection(type_, str(id_), reason))
@@ -95,6 +103,7 @@ class _Applier:
                 id=d["id"], owner=self.user, name=d["name"], rules=wire.rules_in(d["rules"]),
                 updated_at=d["updatedAt"], deleted_at=d.get("deletedAt"), revision=self.revisions.get(),
             )
+            self.lost_access.add(self.user.pk)  # eigen andere toestellen
         elif existing.owner_id != self.user.pk:
             self.reject("gameProfile", d["id"], "forbidden")
         elif d["updatedAt"] > existing.updated_at:
@@ -104,6 +113,7 @@ class _Applier:
             existing.deleted_at = d.get("deletedAt")
             existing.revision = self.revisions.get()
             existing.save()
+            self.lost_access.add(self.user.pk)  # eigen andere toestellen
 
     # -- Spellen ------------------------------------------------------------
 
@@ -118,6 +128,7 @@ class _Applier:
                 finished_at=d.get("finishedAt"), deleted_at=d.get("deletedAt"),
                 revision=self.revisions.get(),
             )
+            self.touched_games.add(d["id"])
             return
         if d["updatedAt"] <= existing.updated_at:
             return  # Ouder dan wat de server heeft: negeren (geen fout).
@@ -136,6 +147,7 @@ class _Applier:
         existing.updated_at = d["updatedAt"]
         existing.revision = self.revisions.get()
         existing.save()
+        self.touched_games.add(existing.pk)
 
     # -- Spelers (en uitnodigen) -----------------------------------------------
 
@@ -171,12 +183,14 @@ class _Applier:
         player.updated_at = d["updatedAt"]
         player.revision = self.revisions.get()
         player.save()
+        self.touched_games.add(game.pk)
 
         if account_id != old_account_id:
             if account_id is not None and not new_had_access:
                 record_access(account_id, game.pk, granted=True, revisions=self.revisions)
             if old_account_id is not None and not has_access(old_account_id, game):
                 record_access(old_account_id, game.pk, granted=False, revisions=self.revisions)
+                self.lost_access.add(old_account_id)
 
     # -- Boekingen -------------------------------------------------------------
 
@@ -192,6 +206,7 @@ class _Applier:
                 existing.undone_at = d["undoneAt"]
                 existing.revision = self.revisions.get()
                 existing.save(update_fields=["undone_at", "revision"])
+                self.touched_games.add(existing.game_id)
             return  # Verder verandert een boeking nooit.
 
         game = Game.objects.filter(pk=d["gameId"]).first()
@@ -209,6 +224,18 @@ class _Applier:
             created_at=d["createdAt"], undone_at=d.get("undoneAt"),
             created_by=self.user, revision=self.revisions.get(),
         )
+        self.touched_games.add(game.pk)
+
+
+def _accounts_with_access(game_ids) -> set:
+    """Eigenaren en gekoppelde spelers van deze spellen."""
+    if not game_ids:
+        return set()
+    owners = set(Game.objects.filter(pk__in=game_ids).values_list("owner_id", flat=True))
+    linked = set(
+        Player.objects.filter(game_id__in=game_ids, account__isnull=False).values_list("account_id", flat=True)
+    )
+    return owners | linked
 
 
 def _collect(user, cursor: int, new_cursor: int) -> SyncResult:
@@ -299,6 +326,8 @@ def transfer(user, game: Game, new_owner_id, owner_player_id=None) -> None:
         game.updated_at = timezone.now()
         game.revision = revisions.get()
         game.save(update_fields=["owner", "updated_at", "revision"])
+        users, cursor = _accounts_with_access([game.pk]), revisions.used
+        transaction.on_commit(lambda: notify(users, cursor))
 
 
 def leave(user, game: Game) -> None:
@@ -311,3 +340,5 @@ def leave(user, game: Game) -> None:
             player.revision = revisions.get()
             player.save(update_fields=["account", "updated_at", "revision"])
         record_access(user.pk, game.pk, granted=False, revisions=revisions)
+        users, cursor = _accounts_with_access([game.pk]) | {user.pk}, revisions.used
+        transaction.on_commit(lambda: notify(users, cursor))

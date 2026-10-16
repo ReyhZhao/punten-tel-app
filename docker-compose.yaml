@@ -26,7 +26,7 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PASSWORD: puntenteller
       EMAIL_BACKEND: django.core.mail.backends.console.EmailBackend
-    command: sh -c "python manage.py migrate --noinput && gunicorn puntenteller.wsgi --bind 0.0.0.0:8000 --reload"
+    command: sh -c "python manage.py migrate --noinput && uvicorn puntenteller.asgi:application --host 0.0.0.0 --port 8000 --reload"
     volumes:
       - ./backend:/app
     depends_on:

@@ -4,6 +4,16 @@ image:
   pullPolicy: Always
 # Eén domein voor de PWA (/) en de backend (/api/, /admin/).
 host: punten.vels.online
+
+# BunkerWeb-instellingen voor dit domein (docs/research/sse-realtime-updates.md).
+ingress:
+  annotations:
+    # Realtime-stream (/api/v1/events, Server-Sent Events) niet bufferen.
+    bunkerweb.io/REVERSE_PROXY_BUFFERING: "no"
+    # 400/401/404/429 zijn bij de API normale antwoorden (verkeerde inlogcode,
+    # onbekend e-mailadres, verlopen token, throttle). Niet als "slecht gedrag"
+    # tellen: spelers aan tafel delen vaak één IP. De API heeft eigen limieten.
+    bunkerweb.io/BAD_BEHAVIOR_STATUS_CODES: "403 405 444"
 # Backend (Django). De image-tag wordt bijgewerkt door de release-workflow
 # bij een tag `api-vX.Y.Z`.
 api:

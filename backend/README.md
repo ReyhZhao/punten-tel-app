@@ -6,6 +6,7 @@ spelers. Besluiten: [ADR-0002](../docs/adr/0002-sync-klaar-datamodel.md)
 (backend).
 
 - Python 3.13, Django 5.2 LTS, Django REST Framework, PostgreSQL 17
+- Draait onder uvicorn (ASGI), nodig voor de realtime-stream (SSE)
 - Draait op hetzelfde domein als de PWA: `https://punten.vels.online/api/…`
 - Image `registry.vels.online/punten/api`, release-tags `api-vX.Y.Z`
 
@@ -54,6 +55,7 @@ e-mailadres per uur. Daarnaast geldt een limiet per IP-adres.
 
 | Methode | Pad | Doel |
 |---------|-----|------|
+| `GET` | `/api/v1/events` | Realtime-stream (Server-Sent Events): `event: change` met `data: <cursor>` zodra iets verandert in een spel waar je toegang toe hebt (of toe had); elke 20 s een keep-alive. Krijg je een cursor die hoger is dan je eigen cursor, doe dan een sync. Via de stream gaan geen gegevens |
 | `POST` | `/api/v1/accounts/lookup` | `{email}` → `{id, displayName}`, alleen bij een exacte match met een bevestigd account. De app bewaart `id` als `SavedPlayer.accountId` |
 | `POST` | `/api/v1/games/{id}/leave` | Jezelf uit een gedeeld spel halen |
 | `POST` | `/api/v1/games/{id}/transfer` | Eigenaar: `{accountId, ownerPlayerId?}` draagt het spel over aan een gekoppelde speler. Ben je zelf nog niet aan een speler gekoppeld, geef dan met `ownerPlayerId` aan welke speler jij bent (anders `400 owner_player_required`), zodat je het spel blijft zien |
@@ -161,8 +163,18 @@ de Secret klaar heeft, wacht de pod vanzelf.
 | `DEFAULT_FROM_EMAIL` | `Puntenteller <noreply@vels.online>` | |
 | `THROTTLE_AUTH`, `THROTTLE_LOOKUP` | `20/hour`, `30/hour` | per IP resp. per gebruiker |
 
+### Realtime (SSE)
+
+Na elke schrijvende sync, overdracht of vertrek stuurt de backend na de commit
+`pg_notify`. Elk backend-proces heeft één `LISTEN`-verbinding en verdeelt de
+seintjes over zijn open streams; zonder PostgreSQL gebeurt dat binnen het
+proces. In de ingress staan proxy-buffering en de "bad behavior"-codes van
+BunkerWeb bijgesteld (`ingress.annotations` in `values.yaml`). Achtergrond
+en metingen: `docs/research/sse-realtime-updates.md`.
+
 ### Opschalen
 
 Rate limiting en code-limieten gebruiken een cache in het geheugen. Bij meer
 dan één replica moet die gedeeld worden (Redis via `CACHES`), en moeten
-migraties naar een aparte Job, zodat ze niet dubbel draaien.
+migraties naar een aparte Job, zodat ze niet dubbel draaien. Realtime werkt
+over replicas heen vanzelf (via PostgreSQL `NOTIFY`).

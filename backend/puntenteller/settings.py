@@ -58,6 +58,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "puntenteller.urls"
 WSGI_APPLICATION = "puntenteller.wsgi.application"
+ASGI_APPLICATION = "puntenteller.asgi.application"
 
 TEMPLATES = [
     {
@@ -83,7 +84,9 @@ if env("POSTGRES_HOST"):
             "NAME": env("POSTGRES_DB", "puntenteller"),
             "USER": env("POSTGRES_USER", "puntenteller"),
             "PASSWORD": env("POSTGRES_PASSWORD", ""),
-            "CONN_MAX_AGE": 60,
+            # Onder ASGI draaien synchrone views in een threadpool; persistente
+            # verbindingen per thread stapelen zich dan op. Daarom per verzoek.
+            "CONN_MAX_AGE": 0,
         }
     }
 else:

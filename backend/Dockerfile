@@ -1,4 +1,5 @@
-# Puntenteller-backend: Django + Gunicorn. Migraties draaien apart
+# Puntenteller-backend: Django onder uvicorn (ASGI, nodig voor de SSE-stream
+# /api/v1/events). Migraties draaien apart
 # (initContainer in de Helm-chart): `python manage.py migrate --noinput`.
 FROM python:3.13-slim
 
@@ -21,4 +22,6 @@ RUN useradd --uid 10001 --no-create-home app
 USER 10001
 
 EXPOSE 8000
-CMD ["gunicorn", "puntenteller.wsgi", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-"]
+# --proxy-headers: achter de ingress (X-Forwarded-Proto voor https).
+CMD ["uvicorn", "puntenteller.asgi:application", "--host", "0.0.0.0", "--port", "8000", \
+     "--workers", "2", "--proxy-headers", "--forwarded-allow-ips", "*"]
