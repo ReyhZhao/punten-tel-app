@@ -23,11 +23,15 @@ in code gebruiken we de Engelse naam uit de tweede kolom.
 | **Winnaar**        | `winner`        | Nummer één van de ranglijst als het spel afgerond is. |
 | **Opnieuw spelen** | `rematch`       | Nieuw spel met dezelfde spelregels en spelers. |
 
-## Begrippen voor sync (gepland, zie `backend/`)
+## Begrippen voor sync (zie `backend/` en ADR-0003)
 
 | Begrip            | Code         | Betekenis |
 |-------------------|--------------|-----------|
-| **Account**       | `Account`    | Een gebruiker van de backend (Sign in with Apple). |
-| **Eigenaar**      | `owner`      | Account dat het spel heeft aangemaakt; alleen de eigenaar boekt punten. |
-| **Uitnodiging**   | `Invite`     | Link of code waarmee een speler zijn account aan een `Player` in een spel koppelt. |
-| **Gekoppelde speler** | `Player.accountId` | Speler in een spel die bij een account hoort; die ziet het spel en de stand op zijn eigen toestel. |
+| **Account**       | `User` (backend) | Gebruiker van de backend: e-mailadres + schermnaam, zonder wachtwoord. Optioneel; zonder account werkt de app lokaal. |
+| **Inlogcode**     | `LoginCode`  | 6-cijferige code per e-mail om je account te bevestigen of op een nieuw toestel in te loggen. |
+| **Eigenaar**      | `owner`      | Account dat het spel heeft aangemaakt; wijzigt het spel en de spelers. |
+| **Uitnodigen**    | `accountId` op `Player` | Een speler in een spel koppelen aan een account, gevonden via het exacte e-mailadres. Het spel is dan direct zichtbaar voor dat account. |
+| **Deelnemer**     | gekoppelde `Player` | Uitgenodigd account; ziet het spel en de uitslag. |
+| **Deelnemers mogen scores bijhouden** | `participantsCanScore` | Instelling per spel: deelnemers mogen dan ook boeken. |
+| **Spel verlaten** | `leave`      | Een deelnemer haalt zichzelf uit een gedeeld spel. |
+| **Sync**          | `POST /api/v1/sync` | Eigen wijzigingen sturen en die van anderen ophalen, vanaf een cursor. |

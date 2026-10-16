@@ -1,0 +1,75 @@
+name: Release API
+
+# Tag `api-vX.Y.Z` → image registry.vels.online/punten/api:vX.Y.Z en
+# api.image.tag in deployment/values.yaml. (De PWA gebruikt `vX.Y.Z`.)
+on:
+  push:
+    tags:
+      - 'api-v*.*.*'
+
+env:
+  IMAGE: registry.vels.online/punten/api
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    uses: ./.github/workflows/backend.yml
+
+  docker:
+    name: Build & Push Docker Image
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version tag
+        id: tag
+        run: echo "value=${GITHUB_REF#refs/tags/api-}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.vels.online
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.tag.outputs.value }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+  update-deployment:
+    name: Update Helm Values
+    needs: docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update image tag
+        uses: mikefarah/yq@v4
+        with:
+          cmd: yq -i '.api.image.tag = "${{ needs.docker.outputs.tag }}"' deployment/values.yaml
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add deployment/values.yaml
+          git commit -m "chore: bump api image tag to ${{ needs.docker.outputs.tag }}"
+          git push

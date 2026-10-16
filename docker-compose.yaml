@@ -13,3 +13,39 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  # Backend lokaal: http://localhost:8000/api/v1/ (mails verschijnen in de log).
+  api:
+    build:
+      context: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_DEBUG: "1"
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
+      POSTGRES_HOST: db
+      POSTGRES_PASSWORD: puntenteller
+      EMAIL_BACKEND: django.core.mail.backends.console.EmailBackend
+    command: sh -c "python manage.py migrate --noinput && gunicorn puntenteller.wsgi --bind 0.0.0.0:8000 --reload"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: puntenteller
+      POSTGRES_PASSWORD: puntenteller
+      POSTGRES_DB: puntenteller
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "puntenteller"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

@@ -47,9 +47,13 @@ Nog nodig:
 - [ ] Screenshots (6,9"), beschrijving (NL/EN), leeftijdsclassificatie
 - [ ] TestFlight-beta
 
-## Fase 3 — Sync (zie `backend/README.md`)
+## Fase 3 — Sync (zie `backend/README.md`, ADR-0003)
 
-- [ ] Een `SyncService`-protocol in `PuntentellerKit`, met een implementatie die niets doet zolang er geen backend is
-- [ ] Sign in with Apple, account verwijderen
-- [ ] Uitnodigen via een share-link (Universal Link) → speler koppelen
-- [ ] Spellen van anderen alleen-lezen tonen
+- [x] Backend: accounts met e-mailcode, sync, uitnodigen op e-mailadres, deelnemers laten scoren
+- [x] Uitrol op hetzelfde domein (Helm: `/api/`, `/admin/`)
+- [ ] `SyncService` in `PuntentellerKit`: wijzigingen sinds de laatste sync bijhouden, cursor bewaren, antwoord toepassen
+- [ ] Account aanmaken / inloggen met code, uitloggen, account verwijderen (instellingen)
+- [ ] Speler uitnodigen op e-mailadres; `SavedPlayer.accountId` onthouden
+- [ ] Instelling "Deelnemers mogen scores bijhouden" bij een spel
+- [ ] Gedeelde spellen tonen ("gedeeld door …"), alleen-lezen als scoren niet mag; spel verlaten
+- [ ] Verversen bij openen en met pull-to-refresh
