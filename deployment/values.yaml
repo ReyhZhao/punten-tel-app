@@ -17,10 +17,10 @@ api:
   # Eén replica: de rate limiting gebruikt een cache in het geheugen van de pod.
   # Opschalen vraagt om een gedeelde cache (bv. Redis), zie backend/README.md.
   replicas: 1
-  # Secret (niet in git) met DJANGO_SECRET_KEY en EMAIL_HOST_PASSWORD.
+  # Secret met DJANGO_SECRET_KEY en EMAIL_HOST_PASSWORD, aangemaakt door de
+  # ExternalSecret (templates/external-secret.yaml) uit Vault (kv/puntenteller).
   # Het databasewachtwoord komt uit de Secret van CloudNativePG.
-  # Aanmaken: zie backend/README.md.
-  existingSecret: punten-api
+  existingSecret: backend-secret
   email:
     host: "mail.vels.online"
     port: "587"

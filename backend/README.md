@@ -130,16 +130,18 @@ gebruiker en wachtwoord. Wil je een bestaand CNPG-cluster gebruiken? Zet dan
 `postgres.createCluster: false` en geef `postgres.clusterName` die naam; het
 cluster moet in dezelfde namespace staan.
 
-**Eenmalig vóór de eerste uitrol:** maak de Secret voor de app aan. Die staat
-niet in git.
+**Secrets:** `DJANGO_SECRET_KEY` en `EMAIL_HOST_PASSWORD` komen uit Vault
+(`kv/puntenteller`). De ExternalSecret in de chart zet ze in de Secret
+`backend-secret` (`api.existingSecret`). Zet die twee waarden dus eenmalig in
+Vault, bijvoorbeeld:
 
 ```sh
-kubectl create secret generic punten-api \
-  --from-literal=DJANGO_SECRET_KEY="$(openssl rand -base64 48)" \
-  --from-literal=EMAIL_HOST_PASSWORD='<smtp-wachtwoord>'
+vault kv put kv/puntenteller \
+  DJANGO_SECRET_KEY="$(openssl rand -base64 48)" \
+  EMAIL_HOST_PASSWORD='<smtp-wachtwoord>'
 ```
 
-Vul ook `api.email.host` en `api.email.user` in `values.yaml` in.
+De SMTP-server staat in `api.email` in `values.yaml`.
 
 Een release maak je met de tag `api-vX.Y.Z`. De workflow `release-api.yml`
 test, bouwt en pusht de image en zet `api.image.tag` in `values.yaml`.
