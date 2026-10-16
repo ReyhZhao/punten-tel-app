@@ -78,6 +78,16 @@ struct APIClient: Sendable {
         )
     }
 
+    /// Verzoek voor de realtime-stream (Server-Sent Events, `GET /events`).
+    func eventsRequest() -> URLRequest {
+        var request = URLRequest(url: baseURL.appending(path: "events"))
+        request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        // De server stuurt elke 20 s een keep-alive; ruim daarboven blijven.
+        request.timeoutInterval = 90
+        return request
+    }
+
     func leave(gameId: UUID) async throws {
         let _: Empty = try await send("POST", "games/\(gameId.uuidString.lowercased())/leave")
     }

@@ -20,8 +20,12 @@ function loadSession(): Session | null {
 
 /**
  * Account en sync met de backend. Zonder account gebeurt er niets en werkt de
- * app lokaal. Sync: na een wijziging (2 s vertraagd), elke 20 s zolang de
- * pagina zichtbaar is, en bij terugkeren naar de app.
+ * app lokaal. Sync:
+ * - realtime, zodra de server via de SSE-stream (/api/v1/events) meldt dat er
+ *   iets veranderd is (docs/research/sse-realtime-updates.md);
+ * - na een wijziging (2 s vertraagd) en bij terugkeren naar de app;
+ * - als vangnet elke 60 s (stream open) of 20 s (stream weg) zolang de pagina
+ *   zichtbaar is.
  */
 export function useSync(st: AppState, setSt: (fn: (s: AppState) => AppState) => void) {
   const [session, setSession] = useState<Session | null>(loadSession);
@@ -33,6 +37,9 @@ export function useSync(st: AppState, setSt: (fn: (s: AppState) => AppState) => 
   sessionRef.current = session;
   const inFlight = useRef(false);
   const again = useRef(false);
+  /** De realtime-stream is open. */
+  const live = useRef(false);
+  const lastPoll = useRef(0);
 
   const saveSession = (s: Session | null) => {
     setSession(s);
@@ -87,18 +94,100 @@ export function useSync(st: AppState, setSt: (fn: (s: AppState) => AppState) => 
     return () => clearTimeout(t);
   }, [pendingKey, session, syncNow]);
 
-  // Periodiek en bij terugkeren naar de app.
+  // Periodiek (vangnet) en bij terugkeren naar de app.
   useEffect(() => {
     if (!session) return;
-    const tick = () => { if (document.visibilityState === 'visible') syncNow(); };
-    tick();
+    const tick = (force = false) => {
+      if (document.visibilityState !== 'visible') return;
+      // Met een open stream is pollen alleen een vangnet: eens per minuut.
+      if (!force && live.current && Date.now() - lastPoll.current < 60_000) return;
+      lastPoll.current = Date.now();
+      syncNow();
+    };
+    tick(true);
     const interval = setInterval(tick, 20_000);
-    document.addEventListener('visibilitychange', tick);
+    const onVisible = () => tick(true);
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       clearInterval(interval);
-      document.removeEventListener('visibilitychange', tick);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [session, syncNow]);
+
+  // Realtime: SSE-stream lezen zolang de pagina zichtbaar is. EventSource kan
+  // geen Authorization-header meesturen, daarom fetch met een ReadableStream.
+  useEffect(() => {
+    if (!session) return;
+    let stopped = false;
+    let ctrl: AbortController | null = null;
+    let wake: (() => void) | null = null;
+    const pause = (ms: number) => new Promise<void>((r) => { wake = r; setTimeout(r, ms); });
+
+    const run = async () => {
+      let backoff = 2000;
+      while (!stopped) {
+        if (document.visibilityState !== 'visible') { await pause(60_000); continue; }
+        ctrl = new AbortController();
+        try {
+          const res = await fetch('/api/v1/events', {
+            headers: { Authorization: `Bearer ${session.token}`, Accept: 'text/event-stream' },
+            cache: 'no-store',
+            signal: ctrl.signal,
+          });
+          if (res.status === 401) { clearSession(); return; }
+          if (!res.ok || !res.body) throw new Error(`events ${res.status}`);
+          live.current = true;
+          backoff = 2000;
+          const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+          let buffer = '';
+          let event = '';
+          for (;;) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += value;
+            let nl: number;
+            while ((nl = buffer.indexOf('\n')) >= 0) {
+              const line = buffer.slice(0, nl).replace(/\r$/, '');
+              buffer = buffer.slice(nl + 1);
+              if (line.startsWith('event:')) {
+                event = line.slice(6).trim();
+              } else if (line.startsWith('data:') && event === 'change') {
+                const cursor = Number(line.slice(5).trim());
+                if (cursor > (stRef.current.sync.cursor ?? -1)) {
+                  // Kleine willekeurige vertraging: toestellen achter hetzelfde
+                  // IP (wifi aan tafel) syncen dan niet allemaal tegelijk.
+                  setTimeout(syncNow, 200 + Math.random() * 1300);
+                }
+                event = '';
+              } else if (line === '') {
+                event = '';
+              }
+            }
+          }
+        } catch {
+          // verbroken of afgebroken; hieronder opnieuw proberen
+        }
+        live.current = false;
+        if (stopped) return;
+        await pause(backoff);
+        backoff = Math.min(backoff * 2, 30_000);
+      }
+    };
+    run();
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') wake?.();
+      else ctrl?.abort();  // achtergrond: stream dicht, bij terugkomst opnieuw
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      stopped = true;
+      ctrl?.abort();
+      wake?.();
+      live.current = false;
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [session, syncNow, clearSession]);
 
   const token = session?.token ?? null;
 

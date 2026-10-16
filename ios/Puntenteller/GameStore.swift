@@ -83,6 +83,9 @@ final class GameStore {
 
     var hasPendingChanges: Bool { data.sync.hasPendingChanges }
 
+    /// Hoogste revisie die we van de server hebben verwerkt.
+    var syncCursor: Int? { data.sync.cursor }
+
     func accountName(_ id: String?) -> String? {
         id.flatMap { data.sync.accountNames[$0.lowercased()] }
     }
