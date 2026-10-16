@@ -2,3 +2,45 @@ image:
   repository: registry.vels.online/punten/app
   tag: v1.3.1
   pullPolicy: Always
+
+# Eén domein voor de PWA (/) en de backend (/api/, /admin/).
+host: punten.vels.online
+
+# Backend (Django). De image-tag wordt bijgewerkt door de release-workflow
+# bij een tag `api-vX.Y.Z`.
+api:
+  enabled: true
+  image:
+    repository: registry.vels.online/punten/api
+    tag: v0.1.0
+    pullPolicy: Always
+  # Eén replica: de rate limiting gebruikt een cache in het geheugen van de pod.
+  # Opschalen vraagt om een gedeelde cache (bv. Redis), zie backend/README.md.
+  replicas: 1
+  # Secret (niet in git) met DJANGO_SECRET_KEY en EMAIL_HOST_PASSWORD.
+  # Het databasewachtwoord komt uit de Secret van CloudNativePG.
+  # Aanmaken: zie backend/README.md.
+  existingSecret: punten-api
+  email:
+    host: ""
+    port: "587"
+    user: ""
+    useTls: "true"
+    from: "Puntenteller <noreply@vels.online>"
+
+# PostgreSQL via CloudNativePG (de operator moet in het cluster draaien).
+# De backend leest host, poort, database, gebruiker en wachtwoord uit de
+# Secret "<clusterName>-app" die CNPG aanmaakt.
+postgres:
+  # true = deze chart maakt het CNPG-cluster aan. false = gebruik een
+  # bestaand CNPG-cluster met deze naam in dezelfde namespace.
+  createCluster: true
+  clusterName: punten-db
+  instances: 1
+  database: puntenteller
+  owner: puntenteller
+  storage: 5Gi
+  # Leeg = de standaard StorageClass van het cluster.
+  storageClassName: ""
+  # Leeg = de standaard-image van de operator.
+  imageName: ""

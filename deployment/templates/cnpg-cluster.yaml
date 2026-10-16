@@ -1,0 +1,29 @@
+{{- if and .Values.api.enabled .Values.postgres.createCluster }}
+# PostgreSQL via de CloudNativePG-operator. CNPG maakt zelf de Secret
+# "<naam>-app" aan (username, password, host, port, dbname) en de service
+# "<naam>-rw"; de backend leest daaruit (zie _helpers.tpl).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: {{ .Values.postgres.clusterName }}
+spec:
+  instances: {{ .Values.postgres.instances }}
+  {{- with .Values.postgres.imageName }}
+  imageName: {{ . }}
+  {{- end }}
+  storage:
+    size: {{ .Values.postgres.storage }}
+    {{- with .Values.postgres.storageClassName }}
+    storageClass: {{ . }}
+    {{- end }}
+  bootstrap:
+    initdb:
+      database: {{ .Values.postgres.database }}
+      owner: {{ .Values.postgres.owner }}
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      memory: "512Mi"
+{{- end }}

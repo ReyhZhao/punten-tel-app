@@ -28,6 +28,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,woff2}'],
+        // De backend draait op hetzelfde domein: /api en /admin niet door de
+        // service worker laten afvangen (anders toont /admin de PWA).
+        navigateFallbackDenylist: [/^\/api\//, /^\/admin/, /^\/healthz$/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

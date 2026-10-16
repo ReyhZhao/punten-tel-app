@@ -11,9 +11,9 @@ Deze repo bevat meerdere apps naast elkaar (zie
 |--------------|--------------------------------------------------|----------------------------|
 | `frontend/`  | PWA (Vite + React + TypeScript), draait in Docker/Helm | In productie (v1.x)  |
 | `ios/`       | Native iOS-app (SwiftUI) voor de App Store        | In opbouw — port van de PWA |
-| `backend/`   | Django-API voor sync van scores en uitnodigen van spelers | Gepland — alleen ontwerp |
+| `backend/`   | Django-API voor sync van scores en profielen, accounts en uitnodigen | In opbouw — API klaar, iOS-koppeling volgt |
 | `prototype/` | Oorspronkelijk HTML/React-designprototype         | Referentie                 |
-| `deployment/`| Helm-chart voor de PWA                            | In productie               |
+| `deployment/`| Helm-chart: PWA en backend op één domein, PostgreSQL via CNPG | PWA in productie, backend klaar voor eerste uitrol |
 | `docs/`      | Design-handoff, ADR's, port-plan                  |                            |
 
 ## Documentatie
@@ -44,8 +44,19 @@ cd ios/PuntentellerKit && swift test       # domeinlogica-tests, zonder simulato
 
 Zie [`ios/README.md`](ios/README.md) voor details.
 
+**Backend**
+
+```sh
+docker compose up api                      # API op http://localhost:8000/api/v1/
+cd backend && DJANGO_DEBUG=1 .venv/bin/python manage.py test
+```
+
+Zie [`backend/README.md`](backend/README.md).
+
 ## Releases
 
 - **PWA:** tag `vX.Y.Z` → GitHub Actions bouwt de Docker-image en zet de tag in `deployment/values.yaml`.
 - **iOS:** tag `ios-vX.Y.Z` (matcht bewust níet met `v*.*.*`, zodat de PWA-release niet afgaat).
   Distributie via TestFlight / App Store Connect.
+- **Backend:** tag `api-vX.Y.Z` → Docker-image en `api.image.tag` in `deployment/values.yaml`.
+  Draait op hetzelfde domein onder `/api/` en `/admin/`.

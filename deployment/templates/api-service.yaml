@@ -1,0 +1,17 @@
+{{- if .Values.api.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: punten-api
+  labels:
+    app: punten-api
+spec:
+  selector:
+    app: punten-api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+      protocol: TCP
+  type: ClusterIP
+{{- end }}

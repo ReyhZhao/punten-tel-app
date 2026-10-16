@@ -1,0 +1,66 @@
+{{- if .Values.api.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: punten-api
+  labels:
+    app: punten-api
+spec:
+  replicas: {{ .Values.api.replicas }}
+  selector:
+    matchLabels:
+      app: punten-api
+  template:
+    metadata:
+      labels:
+        app: punten-api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      initContainers:
+        # Migraties vóór de app start; met één replica draaien ze nooit dubbel.
+        - name: migrate
+          image: {{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          command: ["python", "manage.py", "migrate", "--noinput"]
+          envFrom:
+            - secretRef:
+                name: {{ .Values.api.existingSecret }}
+          env:
+            {{- include "punten.apiEnv" . | nindent 12 }}
+      containers:
+        - name: api
+          image: {{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+            - secretRef:
+                name: {{ .Values.api.existingSecret }}
+          env:
+            {{- include "punten.apiEnv" . | nindent 12 }}
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "160Mi"
+            limits:
+              cpu: "500m"
+              memory: "384Mi"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            failureThreshold: 3
+{{- end }}
