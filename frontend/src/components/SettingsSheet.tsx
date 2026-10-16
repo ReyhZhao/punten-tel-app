@@ -35,7 +35,9 @@ export default function SettingsSheet({ theme, open, onClose, keepAwake, onKeepA
     <div
       onClick={onClose}
       style={{
-        position: 'absolute',
+        // fixed i.p.v. absolute: anders staat de sheet onderaan een lange
+        // (scrollende) pagina en buiten beeld.
+        position: 'fixed',
         inset: 0,
         zIndex: 60,
         display: 'flex',

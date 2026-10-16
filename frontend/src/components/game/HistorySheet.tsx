@@ -23,7 +23,9 @@ export default function HistorySheet({ theme, open, onClose, game, onUndo }: His
     <div
       onClick={onClose}
       style={{
-        position: 'absolute',
+        // fixed i.p.v. absolute: anders staat de sheet onderaan een lange
+        // (scrollende) pagina en buiten beeld.
+        position: 'fixed',
         inset: 0,
         zIndex: 55,
         display: 'flex',
