@@ -23,8 +23,7 @@ plek. De teksten zijn op lengte gecontroleerd tegen Apple's limieten.
 - [ ] **Review-account:**
       1. Kies een code van 6 cijfers en zet die in Vault:
          `vault kv patch kv/puntenteller REVIEW_ACCOUNT_CODE=<6 cijfers>`
-      2. Vul `api.review.email` in `deployment/values.yaml` in, bijvoorbeeld
-         `review@vels.online`.
+      2. ~~`api.review.email` invullen~~ — staat op `apple@vels.online`.
       3. Rol de API uit (`api-v…`-tag).
 - [ ] **Pushmeldingen:** maak een APNs-sleutel aan en zet `api.push.keyId`
       (stappen in `backend/README.md`, onder *Pushmeldingen*).
@@ -168,7 +167,7 @@ schermnaam en de spelgegevens. Resultaat: **4+**.
 
 **Inloggegevens (demo-account):**
 
-- E-mail: de waarde van `api.review.email`, bijvoorbeeld `review@vels.online`
+- E-mail: `apple@vels.online` (`api.review.email`)
 - Code: de waarde van `REVIEW_ACCOUNT_CODE` in Vault
 
 **Notities voor de reviewer (Engels):**
