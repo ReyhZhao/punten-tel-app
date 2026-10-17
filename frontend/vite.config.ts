@@ -34,7 +34,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,woff2}'],
         // De backend draait op hetzelfde domein: /api en /admin niet door de
         // service worker laten afvangen (anders toont /admin de PWA).
-        navigateFallbackDenylist: [/^\/api\//, /^\/admin/, /^\/healthz$/],
+        // Ook de statische pagina's (privacybeleid, support) niet als app tonen.
+        navigateFallbackDenylist: [/^\/api\//, /^\/admin/, /^\/healthz$/, /^\/privacy/, /^\/support/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
