@@ -54,12 +54,18 @@ def _send(user_ids, payload: dict, collapse_id: str) -> None:
                 PushDevice.objects.filter(id__in=dead).delete()
         except Exception:
             log.exception("Pushmelding versturen mislukt")
+
+    def deliver_in_thread():
+        # Alleen in de eigen thread de verbinding opruimen; op de request-thread
+        # (PUSH_ASYNC uit, zoals in tests) zou dat de lopende verbinding sluiten.
+        try:
+            deliver()
         finally:
             close_old_connections()
 
     def schedule():
         if settings.PUSH_ASYNC:
-            _executor.submit(deliver)
+            _executor.submit(deliver_in_thread)
         else:
             deliver()
 
