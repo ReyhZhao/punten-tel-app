@@ -3,9 +3,10 @@ from datetime import datetime, timedelta, timezone
 
 from django.core.cache import cache
 from django.test import TestCase
+from django.utils import timezone as dj_timezone
 from rest_framework.test import APIClient
 
-from accounts.models import AuthToken, User
+from accounts.models import AuthToken, InviteCode, User
 
 T0 = datetime(2026, 10, 16, 12, 0, tzinfo=timezone.utc)
 RULES = {"scoring": "high", "timerOn": False, "timerSecs": 60, "maxScore": None, "maxRounds": None,
@@ -129,6 +130,40 @@ class InviteTests(SyncTestCase):
         self.assertEqual(
             self.owner.client.post("/api/v1/accounts/lookup", {"email": "bra@example.com"}, format="json").status_code, 404
         )
+
+    def lookup_code(self, code):
+        return self.owner.client.post("/api/v1/accounts/lookup", {"code": code}, format="json")
+
+    def test_lookup_by_invite_code(self):
+        r = self.invitee.client.post("/api/v1/me/invite-code")
+        self.assertEqual(r.status_code, 201)
+        code = r.json()["code"]
+        self.assertRegex(code, r"^\d{6}$")
+        self.assertEqual(self.lookup_code(f" {code} ").json(), {"id": str(self.bram.pk), "displayName": "Bram"})
+
+        # Een nieuwe code vervangt de oude.
+        newer = self.invitee.client.post("/api/v1/me/invite-code").json()["code"]
+        if newer != code:
+            self.assertEqual(self.lookup_code(code).status_code, 404)
+        self.assertEqual(self.lookup_code(newer).status_code, 200)
+
+    def test_invite_code_expires(self):
+        code = self.invitee.client.post("/api/v1/me/invite-code").json()["code"]
+        InviteCode.objects.filter(user=self.bram).update(expires_at=dj_timezone.now() - timedelta(seconds=1))
+        r = self.lookup_code(code)
+        self.assertEqual(r.status_code, 404)
+        self.assertEqual(r.json()["code"], "invite_code_not_found")
+
+    def test_lookup_needs_exactly_one_of_email_or_code(self):
+        url = "/api/v1/accounts/lookup"
+        self.assertEqual(self.owner.client.post(url, {}, format="json").status_code, 400)
+        self.assertEqual(self.owner.client.post(url, {"code": "12345"}, format="json").status_code, 400)
+        both = {"email": "bram@example.com", "code": "123456"}
+        self.assertEqual(self.owner.client.post(url, both, format="json").status_code, 400)
+
+    def test_unverified_accounts_get_no_invite_code(self):
+        ghost = Device(User.objects.create_user("ghost@example.com", "Ghost"))
+        self.assertEqual(ghost.client.post("/api/v1/me/invite-code").status_code, 403)
 
     def test_unverified_accounts_cannot_be_found_or_invited(self):
         ghost = User.objects.create_user("ghost@example.com", "Ghost")

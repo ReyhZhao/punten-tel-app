@@ -114,3 +114,48 @@ class AuthToken(models.Model):
     @classmethod
     def lookup(cls, key: str) -> "AuthToken | None":
         return cls.objects.select_related("user").filter(key_hash=_digest(key)).first()
+
+
+class InviteCode(models.Model):
+    """
+    Uitnodigcode: 6 cijfers die een speler op zijn scherm toont (ook als QR-code),
+    zodat een medespeler hem kan uitnodigen zonder e-mailadres. Eén code per
+    account; een nieuwe vervangt de oude. Geen user-id in de hash, want er wordt
+    juist óp de code gezocht.
+    """
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="invite_code")
+    code_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+
+    @staticmethod
+    def digest(code: str) -> str:
+        return _digest(f"invite:{code.strip()}")
+
+    @classmethod
+    def issue(cls, user: User) -> tuple[str, "InviteCode"]:
+        """Nieuwe code die niet botst met een andere geldige code."""
+        now = timezone.now()
+        cls.objects.filter(expires_at__lte=now).delete()
+        while True:
+            code = f"{secrets.randbelow(1_000_000):06d}"
+            if not cls.objects.filter(code_hash=cls.digest(code)).exclude(user=user).exists():
+                break
+        invite, _ = cls.objects.update_or_create(
+            user=user,
+            defaults={
+                "code_hash": cls.digest(code),
+                "expires_at": now + timedelta(minutes=settings.INVITE_CODE_TTL_MINUTES),
+            },
+        )
+        return code, invite
+
+    @classmethod
+    def find_user(cls, code: str) -> User | None:
+        invite = (
+            cls.objects.select_related("user")
+            .filter(code_hash=cls.digest(code), expires_at__gt=timezone.now(),
+                    user__is_verified=True, user__is_active=True)
+            .first()
+        )
+        return invite.user if invite else None

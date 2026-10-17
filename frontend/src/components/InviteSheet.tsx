@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Theme } from '../types';
+import { canScanQr, parseInviteCode } from '../inviteCode';
 import { useSyncApi } from '../useSync';
+import QrScanner from './QrScanner';
 import Btn from './ui/Btn';
 import Sheet, { Field, Hint } from './ui/Sheet';
 
@@ -12,20 +14,25 @@ interface Props {
   onClose: () => void;
 }
 
-/** Een speler uitnodigen door zijn account te zoeken op het volledige e-mailadres. */
+/**
+ * Een speler uitnodigen door zijn account te zoeken op het volledige e-mailadres
+ * of op de uitnodigcode die hij in Account toont (getypt of als QR-code gescand).
+ */
 export default function InviteSheet({ theme: t, playerName, accountId, onChange, onClose }: Props) {
   const sync = useSyncApi();
-  const [email, setEmail] = useState('');
+  const [query, setQuery] = useState('');
+  const [scanning, setScanning] = useState(false);
   const [found, setFound] = useState<{ id: string; displayName: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const search = async () => {
+  const search = async (text = query) => {
+    const code = parseInviteCode(text);
     setError(null);
     setFound(null);
     setBusy(true);
     try {
-      setFound(await sync.lookup(email.trim()));
+      setFound(await sync.lookup(code ? { code } : { email: text.trim() }));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -44,23 +51,38 @@ export default function InviteSheet({ theme: t, playerName, accountId, onChange,
         </>
       )}
       <Hint theme={t}>
-        Vul het volledige e-mailadres in waarmee {playerName} een Puntenteller-account heeft. Na uitnodigen ziet{' '}
-        {playerName} dit spel en de uitslag in de eigen app.
+        Vul de uitnodigcode in die {playerName} bij Account ziet, of het volledige e-mailadres van het account. Na
+        uitnodigen ziet {playerName} dit spel en de uitslag in de eigen app.
       </Hint>
-      <Field
-        theme={t}
-        type="email"
-        autoComplete="off"
-        autoCapitalize="none"
-        placeholder={`E-mailadres van ${playerName}`}
-        value={email}
-        autoFocus
-        onChange={(e) => setEmail(e.target.value)}
-        onKeyDown={(e) => { if (e.key === 'Enter' && email.trim()) search(); }}
-      />
-      <Btn theme={t} full size="md" variant="soft" onClick={search} disabled={!email.trim() || busy}>
-        {busy ? 'Zoeken…' : 'Zoeken'}
-      </Btn>
+      {scanning ? (
+        <QrScanner theme={t} onCode={(code) => { setScanning(false); setQuery(code); search(code); }} />
+      ) : (
+        <Field
+          theme={t}
+          autoComplete="off"
+          autoCapitalize="none"
+          placeholder="Uitnodigcode of e-mailadres"
+          value={query}
+          autoFocus
+          onChange={(e) => {
+            setQuery(e.target.value);
+            // Een volledige code meteen opzoeken.
+            if (parseInviteCode(e.target.value) && !busy) search(e.target.value);
+          }}
+          onKeyDown={(e) => { if (e.key === 'Enter' && query.trim()) search(); }}
+        />
+      )}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Btn theme={t} size="md" variant="soft" onClick={() => search()} disabled={!query.trim() || busy}
+          style={{ flex: 1 }}>
+          {busy ? 'Zoeken…' : 'Zoeken'}
+        </Btn>
+        {canScanQr && (
+          <Btn theme={t} size="md" variant="soft" onClick={() => setScanning(!scanning)} style={{ flex: 1 }}>
+            {scanning ? 'Stop scannen' : 'Scan QR-code'}
+          </Btn>
+        )}
+      </div>
       {error && <Hint theme={t} error>{error}</Hint>}
       {found && (
         <Btn theme={t} full onClick={() => { onChange(found.id); onClose(); }}>

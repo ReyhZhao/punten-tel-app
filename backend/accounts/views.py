@@ -19,9 +19,10 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from games.access import revoke_all_for_owner
+from games.serializers import iso
 
 from .emails import send_login_code
-from .models import AuthToken, LoginCode, User, normalize_email
+from .models import AuthToken, InviteCode, LoginCode, User, normalize_email
 from .serializers import AccountSerializer, RequestCodeSerializer, VerifyCodeSerializer
 
 # Maximaal aantal codes per e-mailadres per uur (naast de throttle per IP).
@@ -156,3 +157,17 @@ class MeView(APIView):
             revoke_all_for_owner(request.user)
             request.user.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class InviteCodeView(APIView):
+    """
+    Uitnodigcode tonen: een medespeler vult hem in (of scant de QR-code) om je
+    uit te nodigen zonder je e-mailadres te kennen. Elke aanvraag geeft een
+    nieuwe code; de vorige vervalt.
+    """
+
+    def post(self, request):
+        if not request.user.is_verified:
+            return error("not_verified", "Bevestig eerst je e-mailadres.", status.HTTP_403_FORBIDDEN)
+        code, invite = InviteCode.issue(request.user)
+        return Response({"code": code, "expiresAt": iso(invite.expires_at)}, status=status.HTTP_201_CREATED)

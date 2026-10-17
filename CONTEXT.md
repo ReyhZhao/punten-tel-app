@@ -30,7 +30,8 @@ in code gebruiken we de Engelse naam uit de tweede kolom.
 | **Account**       | `User` (backend) | Gebruiker van de backend: e-mailadres + schermnaam, zonder wachtwoord. Optioneel; zonder account werkt de app lokaal. |
 | **Inlogcode**     | `LoginCode`  | 6-cijferige code per e-mail om je account te bevestigen of op een nieuw toestel in te loggen. |
 | **Eigenaar**      | `owner`      | Account dat het spel heeft aangemaakt; wijzigt het spel en de spelers. |
-| **Uitnodigen**    | `accountId` op `Player` | Een speler in een spel koppelen aan een account, gevonden via het exacte e-mailadres. Het spel is dan direct zichtbaar voor dat account. |
+| **Uitnodigen**    | `accountId` op `Player` | Een speler in een spel koppelen aan een account, gevonden via het exacte e-mailadres of een uitnodigcode. Het spel is dan direct zichtbaar voor dat account. |
+| **Uitnodigcode** | `InviteCode` | 6-cijferige code (ook als QR-code) die een speler in Account toont, zodat een medespeler hem zonder e-mailadres kan uitnodigen. 10 minuten geldig; een nieuwe vervangt de oude. |
 | **Deelnemer**     | gekoppelde `Player` | Uitgenodigd account; ziet het spel en de uitslag. |
 | **Deelnemers mogen scores bijhouden** | `participantsCanScore` | Instelling per spel: deelnemers mogen dan ook boeken. |
 | **Spel verlaten** | `leave`      | Een deelnemer haalt zichzelf uit een gedeeld spel. |

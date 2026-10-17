@@ -183,6 +183,7 @@ private struct SignedInView: View {
     @Environment(SyncEngine.self) private var sync
     @State private var name = ""
     @State private var confirmDelete = false
+    @State private var showInviteCode = false
     @State private var error: String?
 
     var body: some View {
@@ -193,7 +194,15 @@ private struct SignedInView: View {
                     .onSubmit(saveName)
                     .submitLabel(.done)
             } footer: {
-                Text("Medespelers vinden je via je e-mailadres en zien je schermnaam.")
+                Text("Medespelers vinden je via je e-mailadres of je uitnodigcode en zien je schermnaam.")
+            }
+
+            Section {
+                if showInviteCode {
+                    InviteCodeCard()
+                } else {
+                    Button("Toon mijn uitnodigcode", systemImage: "qrcode") { showInviteCode = true }
+                }
             }
 
             Section {

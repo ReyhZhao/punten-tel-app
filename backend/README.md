@@ -48,6 +48,7 @@ Nederlands en geschikt om te tonen.
 | `POST` | `/api/v1/auth/logout` | Token van dit toestel intrekken |
 | `GET` / `PATCH` | `/api/v1/me` | `{id, email, displayName}`; alleen `displayName` is te wijzigen |
 | `DELETE` | `/api/v1/me` | Account en eigen spellen verwijderen (App Store-eis) |
+| `POST` | `/api/v1/me/invite-code` | Nieuwe uitnodigcode: `{code, expiresAt}`, 6 cijfers, 10 minuten geldig; de vorige vervalt. Alleen voor bevestigde accounts |
 
 Codes zijn 15 minuten geldig, met maximaal 5 pogingen per code en 5 codes per
 e-mailadres per uur. Daarnaast geldt een limiet per IP-adres.
@@ -59,7 +60,7 @@ e-mailadres per uur. Daarnaast geldt een limiet per IP-adres.
 | `POST` | `/api/v1/push/devices` | `{token, environment}` (`sandbox` of `production`): toestel aanmelden voor pushmeldingen. Gekoppeld aan het login-token; uitloggen meldt het toestel af |
 | `DELETE` | `/api/v1/push/devices/{token}` | Toestel afmelden |
 | `GET` | `/api/v1/events` | Realtime-stream (Server-Sent Events): `event: change` met `data: <cursor>` zodra iets verandert in een spel waar je toegang toe hebt (of toe had); elke 20 s een keep-alive. Krijg je een cursor die hoger is dan je eigen cursor, doe dan een sync. Via de stream gaan geen gegevens |
-| `POST` | `/api/v1/accounts/lookup` | `{email}` → `{id, displayName}`, alleen bij een exacte match met een bevestigd account. De app bewaart `id` als `SavedPlayer.accountId` |
+| `POST` | `/api/v1/accounts/lookup` | `{email}` of `{code}` (uitnodigcode) → `{id, displayName}`, alleen bij een exacte match met een bevestigd account. Onbekende code: `404 invite_code_not_found`. De app bewaart `id` als `SavedPlayer.accountId` |
 | `POST` | `/api/v1/games/{id}/leave` | Jezelf uit een gedeeld spel halen |
 | `POST` | `/api/v1/games/{id}/transfer` | Eigenaar: `{accountId, ownerPlayerId?}` draagt het spel over aan een gekoppelde speler. Ben je zelf nog niet aan een speler gekoppeld, geef dan met `ownerPlayerId` aan welke speler jij bent (anders `400 owner_player_required`), zodat je het spel blijft zien |
 

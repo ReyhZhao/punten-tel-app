@@ -7,4 +7,5 @@ urlpatterns = [
     path("auth/verify", views.VerifyCodeView.as_view()),
     path("auth/logout", views.LogoutView.as_view()),
     path("me", views.MeView.as_view()),
+    path("me/invite-code", views.InviteCodeView.as_view()),
 ]

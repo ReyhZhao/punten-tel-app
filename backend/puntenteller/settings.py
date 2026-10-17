@@ -155,6 +155,7 @@ PUSH_ASYNC = True  # in een achtergrond-thread versturen (tests: synchroon)
 # Inlogcodes
 LOGIN_CODE_TTL_MINUTES = int(env("LOGIN_CODE_TTL_MINUTES", "15"))
 LOGIN_CODE_MAX_ATTEMPTS = 5
+INVITE_CODE_TTL_MINUTES = int(env("INVITE_CODE_TTL_MINUTES", "10"))
 
 # Account voor Apple's app-review: reviewers kunnen geen e-mail ontvangen, dus
 # voor dit ene adres geldt een vaste code (uit Vault) en wordt niets gemaild.

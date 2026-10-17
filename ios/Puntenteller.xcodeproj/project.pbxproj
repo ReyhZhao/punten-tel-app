@@ -207,6 +207,7 @@
 				INFOPLIST_FILE = "Puntenteller-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Puntenteller;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "De camera wordt alleen gebruikt om de QR-code van een medespeler te scannen.";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.board-games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -239,6 +240,7 @@
 				INFOPLIST_FILE = "Puntenteller-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = Puntenteller;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "De camera wordt alleen gebruikt om de QR-code van een medespeler te scannen.";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.board-games";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

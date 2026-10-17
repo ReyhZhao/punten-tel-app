@@ -229,8 +229,12 @@ export function useSync(st: AppState, setSt: (fn: (s: AppState) => AppState) => 
       setStatus({ kind: 'idle' });
     },
 
-    lookup: (email: string) =>
-      api<{ id: string; displayName: string }>('POST', 'accounts/lookup', { email }, token),
+    /** Account zoeken op e-mailadres of uitnodigcode. */
+    lookup: (query: { email: string } | { code: string }) =>
+      api<{ id: string; displayName: string }>('POST', 'accounts/lookup', query, token),
+
+    /** Eigen uitnodigcode; elke aanvraag geeft een nieuwe. */
+    inviteCode: () => api<{ code: string; expiresAt: string }>('POST', 'me/invite-code', undefined, token),
 
     /** Eigenaar overdragen. Eerst syncen (net uitgenodigde spelers), daarna opnieuw. */
     transfer: async (gameId: string, accountId: string, ownerPlayerId?: string | null) => {

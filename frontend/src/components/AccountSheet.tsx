@@ -4,6 +4,7 @@ import { relTime } from '../store';
 import { ApiError } from '../sync';
 import { useSyncApi } from '../useSync';
 import Btn from './ui/Btn';
+import InviteCodeCard from './InviteCodeCard';
 import Sheet, { Field, Hint } from './ui/Sheet';
 
 interface Props {
@@ -139,6 +140,7 @@ function SignedIn({ theme: t }: { theme: Theme }) {
   const account = sync.account!;
   const [name, setName] = useState(account.displayName);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showCode, setShowCode] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const saveName = async () => {
@@ -150,10 +152,17 @@ function SignedIn({ theme: t }: { theme: Theme }) {
   const status = sync.status;
   return (
     <>
-      <Hint theme={t}>Ingelogd als <b>{account.email}</b>. Medespelers vinden je via dit e-mailadres.</Hint>
+      <Hint theme={t}>
+        Ingelogd als <b>{account.email}</b>. Medespelers vinden je via dit e-mailadres of je uitnodigcode.
+      </Hint>
       <Field theme={t} value={name} maxLength={40} placeholder="Schermnaam"
         onChange={(e) => setName(e.target.value)} onBlur={saveName}
         onKeyDown={(e) => { if (e.key === 'Enter') saveName(); }} />
+      {showCode ? (
+        <InviteCodeCard theme={t} />
+      ) : (
+        <Btn theme={t} full size="md" onClick={() => setShowCode(true)}>Toon mijn uitnodigcode</Btn>
+      )}
       <Btn theme={t} full variant="soft" size="md" onClick={sync.syncNow} disabled={status.kind === 'syncing'}>
         {status.kind === 'syncing' ? 'Bezig met synchroniseren…' : 'Nu synchroniseren'}
       </Btn>

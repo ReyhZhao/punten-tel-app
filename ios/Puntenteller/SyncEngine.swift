@@ -92,8 +92,16 @@ final class SyncEngine {
 
     // MARK: - Uitnodigen en gedeelde spellen
 
-    func lookup(email: String) async throws -> APIClient.LookupResult {
-        try await api.lookup(email: email)
+    /// Account zoeken op uitnodigcode (getypt of gescand) of anders op e-mailadres.
+    func lookup(_ text: String) async throws -> APIClient.LookupResult {
+        if let code = InviteCode.parse(text) {
+            return try await api.lookup(inviteCode: code)
+        }
+        return try await api.lookup(email: text.trimmingCharacters(in: .whitespaces))
+    }
+
+    func inviteCode() async throws -> APIClient.InviteCodeResult {
+        try await api.inviteCode()
     }
 
     /// Eigenaar overdragen. Eerst syncen, zodat net uitgenodigde spelers ook op

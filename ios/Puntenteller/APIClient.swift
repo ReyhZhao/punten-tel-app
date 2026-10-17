@@ -37,6 +37,7 @@ struct APIClient: Sendable {
     struct RequestCodeResult: Decodable { var sent: Bool; var newAccount: Bool }
     struct VerifyResult: Decodable { var token: String; var account: Account }
     struct LookupResult: Decodable { var id: String; var displayName: String }
+    struct InviteCodeResult: Decodable { var code: String; var expiresAt: Date }
 
     func requestCode(email: String, displayName: String?) async throws -> RequestCodeResult {
         var body = ["email": email]
@@ -64,6 +65,15 @@ struct APIClient: Sendable {
 
     func lookup(email: String) async throws -> LookupResult {
         try await send("POST", "accounts/lookup", body: ["email": email])
+    }
+
+    func lookup(inviteCode: String) async throws -> LookupResult {
+        try await send("POST", "accounts/lookup", body: ["code": inviteCode])
+    }
+
+    /// Nieuwe uitnodigcode; de vorige vervalt.
+    func inviteCode() async throws -> InviteCodeResult {
+        try await send("POST", "me/invite-code")
     }
 
     func sync(_ request: SyncRequest) async throws -> SyncResponse {

@@ -1,7 +1,8 @@
 import SwiftUI
 import PuntentellerKit
 
-/// Een speler uitnodigen door zijn account te zoeken op e-mailadres.
+/// Een speler uitnodigen door zijn account te zoeken op uitnodigcode (getypt of
+/// als QR-code gescand) of op e-mailadres.
 struct InviteSheet: View {
     let playerName: String
     let accountId: String?
@@ -9,7 +10,8 @@ struct InviteSheet: View {
 
     @Environment(SyncEngine.self) private var sync
     @Environment(\.dismiss) private var dismiss
-    @State private var email = ""
+    @State private var query = ""
+    @State private var scanning = false
     @State private var found: APIClient.LookupResult?
     @State private var busy = false
     @State private var error: String?
@@ -28,15 +30,21 @@ struct InviteSheet: View {
                     }
                 }
                 Section {
-                    TextField("E-mailadres van \(playerName)", text: $email)
-                        .textContentType(.emailAddress)
+                    TextField("Uitnodigcode of e-mailadres", text: $query)
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .submitLabel(.search)
                         .onSubmit(search)
+                        .onChange(of: query) { _, new in
+                            // Een volledige code meteen opzoeken.
+                            if InviteCode.parse(new) != nil && !busy { search() }
+                        }
+                    if InviteCodeScanner.isAvailable {
+                        Button("Scan QR-code", systemImage: "qrcode.viewfinder") { scanning = true }
+                    }
                 } footer: {
-                    Text("Vul het volledige e-mailadres in waarmee \(playerName) een Puntenteller-account heeft. Na uitnodigen ziet \(playerName) dit spel en de uitslag in de eigen app.")
+                    Text("Vul de uitnodigcode in die \(playerName) bij Account ziet, of het volledige e-mailadres van het account. Na uitnodigen ziet \(playerName) dit spel en de uitslag in de eigen app.")
                 }
                 Section {
                     if let found {
@@ -56,7 +64,7 @@ struct InviteSheet: View {
                             }
                         }
                         .formPrimaryButton()
-                        .disabled(email.trimmingCharacters(in: .whitespaces).isEmpty || busy)
+                        .disabled(query.trimmingCharacters(in: .whitespaces).isEmpty || busy)
                     }
                 }
                 if let error {
@@ -65,6 +73,11 @@ struct InviteSheet: View {
             }
             .scrollContentBackground(.hidden)
             .background(Theme.bg)
+            .sheet(isPresented: $scanning) {
+                InviteCodeScanner { code in
+                    query = InviteCode.formatted(code)
+                }
+            }
             .navigationTitle("\(playerName) uitnodigen")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -80,7 +93,7 @@ struct InviteSheet: View {
         Task {
             defer { busy = false }
             do {
-                found = try await sync.lookup(email: email.trimmingCharacters(in: .whitespaces))
+                found = try await sync.lookup(query)
             } catch {
                 self.error = error.localizedDescription
             }

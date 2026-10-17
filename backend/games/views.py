@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from accounts.models import normalize_email
+from accounts.models import InviteCode, normalize_email
 
 from . import sync as sync_service
 from .access import visible_games
@@ -25,14 +25,21 @@ class SyncView(APIView):
 
 
 class LookupSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    email = serializers.EmailField(required=False)
+    code = serializers.RegexField(r"^\s*\d{6}\s*$", required=False)
+
+    def validate(self, attrs):
+        if ("email" in attrs) == ("code" in attrs):
+            raise serializers.ValidationError("Geef een e-mailadres of een code.")
+        return attrs
 
 
 class AccountLookupView(APIView):
     """
-    Speler zoeken om uit te nodigen: alleen op het volledige e-mailadres, en
-    alleen bevestigde accounts. Geeft id en schermnaam, nooit het e-mailadres
-    van anderen terug. Begrensd per gebruiker tegen het raden van adressen.
+    Speler zoeken om uit te nodigen: op het volledige e-mailadres of op de
+    uitnodigcode die de speler op zijn scherm toont, en alleen bevestigde
+    accounts. Geeft id en schermnaam, nooit het e-mailadres van anderen terug.
+    Begrensd per gebruiker tegen het raden van adressen en codes.
     """
 
     throttle_classes = [ScopedRateThrottle]
@@ -41,14 +48,22 @@ class AccountLookupView(APIView):
     def post(self, request):
         data = LookupSerializer(data=request.data)
         data.is_valid(raise_exception=True)
-        user = User.objects.filter(
-            email=normalize_email(data.validated_data["email"]), is_verified=True, is_active=True
-        ).first()
-        if user is None:
-            return Response(
-                {"code": "account_not_found", "detail": "Er is geen account met dit e-mailadres."},
-                status=status.HTTP_404_NOT_FOUND,
-            )
+        if "code" in data.validated_data:
+            user = InviteCode.find_user(data.validated_data["code"])
+            if user is None:
+                return Response(
+                    {"code": "invite_code_not_found", "detail": "Deze code klopt niet of is verlopen."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        else:
+            user = User.objects.filter(
+                email=normalize_email(data.validated_data["email"]), is_verified=True, is_active=True
+            ).first()
+            if user is None:
+                return Response(
+                    {"code": "account_not_found", "detail": "Er is geen account met dit e-mailadres."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
         return Response({"id": str(user.pk), "displayName": user.display_name})
 
 
