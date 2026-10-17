@@ -41,10 +41,12 @@ final class GameStore {
 
     @discardableResult
     func startGame(
-        name: String, rules: GameRules, players: [NewPlayer], profileId: UUID? = nil, participantsCanScore: Bool = false
+        name: String, rules: GameRules, players: [NewPlayer], profileId: UUID? = nil, participantsCanScore: Bool = false,
+        stayOnOwnPlayer: Bool = false
     ) -> Game {
         let game = data.startGame(
-            name: name, rules: rules, players: players, profileId: profileId, participantsCanScore: participantsCanScore
+            name: name, rules: rules, players: players, profileId: profileId, participantsCanScore: participantsCanScore,
+            stayOnOwnPlayer: stayOnOwnPlayer
         )
         save()
         return game
@@ -121,6 +123,11 @@ final class GameStore {
 
     func setParticipantsCanScore(_ on: Bool, in gameId: UUID) {
         data.setParticipantsCanScore(on, in: gameId)
+        save()
+    }
+
+    func setStayOnOwnPlayer(_ on: Bool, in gameId: UUID) {
+        data.setStayOnOwnPlayer(on, in: gameId)
         save()
     }
 

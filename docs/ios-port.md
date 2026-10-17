@@ -61,6 +61,7 @@ checklist staan in [`app-store.md`](app-store.md).
 - [x] Sync-kern in `PuntentellerKit` (`Sync.swift`): gewijzigde spellen bijhouden, cursor, antwoord toepassen
 - [x] Account aanmaken / inloggen met code, uitloggen, account verwijderen (Instellingen → Account)
 - [x] Speler uitnodigen op e-mailadres; `SavedPlayer.accountId` onthouden
+- [x] Invoer op eigen speler (`stayOnOwnPlayer`): de invoer blijft na een boeking op je eigen speler (ook PWA)
 - [x] Uitnodigcode (6 cijfers, 10 min geldig) en QR-code tonen in Account; code invullen of scannen bij Uitnodigen (ook PWA)
 - [x] Instelling "Deelnemers mogen scores bijhouden" bij een nieuw spel
 - [x] Gedeelde spellen tonen ("Gedeeld door …"), alleen bekijken als scoren niet mag; spel verlaten

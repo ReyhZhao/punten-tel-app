@@ -39,6 +39,7 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
   /** Id van de speler die uitgenodigd wordt (sheet). */
   const [inviting, setInviting] = useState<string | null>(null);
   const [participantsCanScore, setParticipantsCanScore] = useState(false);
+  const [stayOnOwnPlayer, setStayOnOwnPlayer] = useState(false);
   const anyInvited = signedIn && players.some((p) => p.accountId);
   /** Eerder uitgenodigd? Dan direct weer met dat account (alleen met een account). */
   const knownAccount = (name: string) =>
@@ -1010,6 +1011,33 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
             </button>
           </div>
         )}
+        {anyInvited && participantsCanScore && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: t.muted }}>
+                Invoer op eigen speler
+              </div>
+              <div style={{ fontSize: 13, color: t.muted, marginTop: 2 }}>
+                Iedereen boekt op de eigen telefoon; na een boeking springt de invoer terug naar je eigen speler
+              </div>
+            </div>
+            <button
+              onClick={() => setStayOnOwnPlayer((v) => !v)}
+              aria-pressed={stayOnOwnPlayer}
+              style={{
+                border: 'none', cursor: 'pointer', width: 52, height: 31, borderRadius: 16, padding: 2,
+                background: stayOnOwnPlayer ? '#34C759' : t.faint, transition: 'background .2s', display: 'flex',
+              }}
+            >
+              <div
+                style={{
+                  width: 27, height: 27, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                  transform: stayOnOwnPlayer ? 'translateX(21px)' : 'translateX(0)', transition: 'transform .2s',
+                }}
+              />
+            </button>
+          </div>
+        )}
       </div>
 
       {inviting && (() => {
@@ -1059,6 +1087,7 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
               sortPlayers,
               players: signedIn ? players : players.map((p) => ({ ...p, accountId: null })),
               participantsCanScore: anyInvited && participantsCanScore,
+              stayOnOwnPlayer: anyInvited && participantsCanScore && stayOnOwnPlayer,
             })
           }
         >

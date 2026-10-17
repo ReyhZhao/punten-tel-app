@@ -25,6 +25,8 @@ class GameInSerializer(serializers.Serializer):
     rules = RulesSerializer()
     endTurnsLeft = serializers.IntegerField(required=False, allow_null=True, min_value=0)
     participantsCanScore = serializers.BooleanField(required=False, default=False)
+    # Geen default: oudere apps sturen het veld niet en mogen het dan niet resetten.
+    stayOnOwnPlayer = serializers.BooleanField(required=False)
     createdAt = serializers.DateTimeField()
     updatedAt = serializers.DateTimeField()
     finishedAt = serializers.DateTimeField(required=False, allow_null=True)
@@ -87,6 +89,7 @@ def game_out(g) -> dict:
         "id": str(g.id), "ownerId": str(g.owner_id), "name": g.name,
         "profileId": str(g.profile_id) if g.profile_id else None, "rules": g.rules,
         "endTurnsLeft": g.end_turns_left, "participantsCanScore": g.participants_can_score,
+        "stayOnOwnPlayer": g.stay_on_own_player,
         "createdAt": iso(g.created_at), "updatedAt": iso(g.updated_at),
         "finishedAt": iso(g.finished_at), "deletedAt": iso(g.deleted_at),
     }

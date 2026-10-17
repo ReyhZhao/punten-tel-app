@@ -216,11 +216,24 @@ class ParticipantScoringTests(SyncTestCase):
         self.create_game(bram_account=str(self.bram.pk), participantsCanScore=True)
         self.invitee.sync(games=[game(self.g, minutes=5, participantsCanScore=True) | {
             "name": "Andere naam", "finishedAt": ts(5), "rules": RULES | {"scoring": "low"},
+            "stayOnOwnPlayer": True,
         }])
         got = self.owner.sync()["changes"]["games"][0]
         self.assertEqual(got["finishedAt"], ts(5).replace("Z", ".000Z"))
         self.assertEqual(got["name"], "Rummikub")
         self.assertEqual(got["rules"]["scoring"], "high")
+        self.assertFalse(got["stayOnOwnPlayer"])
+
+    def test_stay_on_own_player_survives_clients_without_the_field(self):
+        self.create_game(bram_account=str(self.bram.pk), participantsCanScore=True, stayOnOwnPlayer=True)
+        self.assertTrue(self.invitee.sync()["changes"]["games"][0]["stayOnOwnPlayer"])
+        # Een oudere app kent het veld niet en stuurt het dus niet mee.
+        self.owner.sync(games=[game(self.g, minutes=5, participantsCanScore=True) | {"name": "Nieuw"}])
+        got = self.invitee.sync()["changes"]["games"][0]
+        self.assertEqual(got["name"], "Nieuw")
+        self.assertTrue(got["stayOnOwnPlayer"])
+        self.owner.sync(games=[game(self.g, minutes=6, participantsCanScore=True, stayOnOwnPlayer=False)])
+        self.assertFalse(self.invitee.sync()["changes"]["games"][0]["stayOnOwnPlayer"])
 
     def test_participant_cannot_change_players(self):
         self.create_game(bram_account=str(self.bram.pk), participantsCanScore=True)

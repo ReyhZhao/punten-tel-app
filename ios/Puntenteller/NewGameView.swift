@@ -25,6 +25,7 @@ struct NewGameView: View {
     @State private var sortPlayers = false
     @State private var players: [NewPlayer] = []
     @State private var participantsCanScore = false
+    @State private var stayOnOwnPlayer = false
     /// Index van de speler die uitgenodigd wordt (sheet).
     @State private var invitingIndex: Int?
     @State private var draft = ""
@@ -103,6 +104,13 @@ struct NewGameView: View {
                             subtitle: "Uitgenodigde spelers kunnen dan ook punten boeken",
                             isOn: $participantsCanScore
                         )
+                        if participantsCanScore {
+                            ToggleRow(
+                                title: "Invoer op eigen speler",
+                                subtitle: "Iedereen boekt op de eigen telefoon; na een boeking springt de invoer terug naar je eigen speler",
+                                isOn: $stayOnOwnPlayer
+                            )
+                        }
                     }
                 }
                 .padding(.horizontal, 20)
@@ -465,7 +473,8 @@ struct NewGameView: View {
         onStart(store.startGame(
             name: trimmedName, rules: rules,
             players: sync.isSignedIn ? players : players.map { NewPlayer(name: $0.name) },
-            profileId: profileId, participantsCanScore: invited && participantsCanScore
+            profileId: profileId, participantsCanScore: invited && participantsCanScore,
+            stayOnOwnPlayer: invited && participantsCanScore && stayOnOwnPlayer
         ))
     }
 }

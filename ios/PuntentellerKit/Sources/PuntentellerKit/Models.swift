@@ -119,6 +119,8 @@ public struct Game: Identifiable, Codable, Hashable, Sendable {
     public var ownerId: String?
     /// Gekoppelde spelers mogen ook scores bijhouden (ADR-0003).
     public var participantsCanScore: Bool
+    /// Invoer op eigen speler: na een boeking springt de invoer terug naar je eigen speler.
+    public var stayOnOwnPlayer: Bool
 
     public init(
         id: UUID = UUID(),
@@ -133,7 +135,8 @@ public struct Game: Identifiable, Codable, Hashable, Sendable {
         finishedAt: Date? = nil,
         deletedAt: Date? = nil,
         ownerId: String? = nil,
-        participantsCanScore: Bool = false
+        participantsCanScore: Bool = false,
+        stayOnOwnPlayer: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -148,6 +151,7 @@ public struct Game: Identifiable, Codable, Hashable, Sendable {
         self.deletedAt = deletedAt
         self.ownerId = ownerId
         self.participantsCanScore = participantsCanScore
+        self.stayOnOwnPlayer = stayOnOwnPlayer
     }
 
     // Velden die later zijn toegevoegd, zijn optioneel bij het decoderen,
@@ -167,6 +171,7 @@ public struct Game: Identifiable, Codable, Hashable, Sendable {
         deletedAt = try c.decodeIfPresent(Date.self, forKey: .deletedAt)
         ownerId = try c.decodeIfPresent(String.self, forKey: .ownerId)
         participantsCanScore = try c.decodeIfPresent(Bool.self, forKey: .participantsCanScore) ?? false
+        stayOnOwnPlayer = try c.decodeIfPresent(Bool.self, forKey: .stayOnOwnPlayer) ?? false
     }
 
     public var isFinished: Bool { finishedAt != nil }

@@ -59,6 +59,10 @@ private struct ScoringContent: View {
         game.players.first { $0.id == selectedId } ?? game.players.first
     }
 
+    /// Invoer op eigen speler: de invoer staat op je eigen speler en springt
+    /// daar na elke boeking naar terug (op je eigen telefoon boek je voor jezelf).
+    private var ownInputPlayer: UUID? { game.ownInputPlayer(as: sync.accountId) }
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -102,6 +106,8 @@ private struct ScoringContent: View {
         .toolbar(.hidden, for: .navigationBar)
         .sensoryFeedback(.impact(weight: .light), trigger: game.activeLog.count)
         .onAppear { remaining = game.rules.timerSecs }
+        // Ook als de instelling tijdens het spel aangaat of via sync binnenkomt.
+        .onChange(of: ownInputPlayer, initial: true) { _, own in if let own { selectedId = own } }
         .task(id: running) {
             // Tikt elke seconde zolang de timer loopt; stopt vanzelf bij pauze.
             while running, game.rules.timerOn {
@@ -331,8 +337,11 @@ private struct ScoringContent: View {
             floats.removeAll { $0.id == entry.id }
         }
         amount = 0
-        // Door naar de volgende speler in invoervolgorde, zoals de PWA.
-        if let i = game.players.firstIndex(where: { $0.id == player.id }) {
+        // Door naar de volgende speler in invoervolgorde, zoals de PWA; of
+        // terug naar je eigen speler bij invoer op eigen speler.
+        if let own = ownInputPlayer {
+            selectedId = own
+        } else if let i = game.players.firstIndex(where: { $0.id == player.id }) {
             selectedId = game.players[(i + 1) % game.players.count].id
         }
         if outcome == .finished { amountFocused = false }
@@ -343,7 +352,7 @@ private struct ScoringContent: View {
         turnIdx = (turnIdx + 1) % game.players.count
         remaining = game.rules.timerSecs
         running = true
-        selectedId = game.players[turnIdx].id
+        selectedId = ownInputPlayer ?? game.players[turnIdx].id
     }
 }
 

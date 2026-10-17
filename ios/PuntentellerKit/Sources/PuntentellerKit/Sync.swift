@@ -70,6 +70,8 @@ public struct GameDTO: Codable, Sendable, Equatable {
     public var rules: GameRules
     public var endTurnsLeft: Int?
     public var participantsCanScore: Bool
+    /// Optioneel: een oudere backend kent het veld nog niet.
+    public var stayOnOwnPlayer: Bool?
     public var createdAt: Date
     public var updatedAt: Date
     public var finishedAt: Date?
@@ -149,6 +151,13 @@ extension Game {
     public func canScore(as accountId: String?) -> Bool {
         isOwned(by: accountId) || participantsCanScore
     }
+
+    /// Speler waar de invoer op blijft staan als "Invoer op eigen speler" aan
+    /// staat en dit account mag boeken; anders nil (invoer schuift door).
+    public func ownInputPlayer(as accountId: String?) -> UUID? {
+        guard stayOnOwnPlayer, canScore(as: accountId), let accountId else { return nil }
+        return players.first { $0.accountId?.caseInsensitiveCompare(accountId) == .orderedSame }?.id
+    }
 }
 
 // MARK: - Wijzigingen bijhouden en verzenden
@@ -189,7 +198,8 @@ extension AppData {
             changes.games.append(GameDTO(
                 id: game.id, ownerId: nil, name: String(game.name.prefix(Limits.gameName)),
                 profileId: game.profileId, rules: game.rules, endTurnsLeft: game.endTurnsLeft,
-                participantsCanScore: game.participantsCanScore, createdAt: game.createdAt,
+                participantsCanScore: game.participantsCanScore, stayOnOwnPlayer: game.stayOnOwnPlayer,
+                createdAt: game.createdAt,
                 updatedAt: game.updatedAt, finishedAt: game.finishedAt, deletedAt: game.deletedAt
             ))
             // Spelers wijzigt alleen de eigenaar; deelnemers sturen alleen boekingen.
@@ -247,6 +257,7 @@ extension AppData {
                 games[i].rules = dto.rules
                 games[i].endTurnsLeft = dto.endTurnsLeft
                 games[i].participantsCanScore = dto.participantsCanScore
+                games[i].stayOnOwnPlayer = dto.stayOnOwnPlayer ?? false
                 games[i].updatedAt = dto.updatedAt
                 games[i].finishedAt = dto.finishedAt
                 games[i].deletedAt = dto.deletedAt
@@ -256,7 +267,8 @@ extension AppData {
                     id: dto.id, name: dto.name, profileId: dto.profileId, rules: dto.rules, players: [],
                     endTurnsLeft: dto.endTurnsLeft, createdAt: dto.createdAt, updatedAt: dto.updatedAt,
                     finishedAt: dto.finishedAt, deletedAt: dto.deletedAt,
-                    ownerId: dto.ownerId?.lowercased(), participantsCanScore: dto.participantsCanScore
+                    ownerId: dto.ownerId?.lowercased(), participantsCanScore: dto.participantsCanScore,
+                    stayOnOwnPlayer: dto.stayOnOwnPlayer ?? false
                 ))
             }
         }

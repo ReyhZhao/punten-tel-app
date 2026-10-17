@@ -136,6 +136,7 @@ class _Applier:
                 id=d["id"], owner=self.user, name=d["name"], profile_id=d.get("profileId"),
                 rules=wire.rules_in(d["rules"]), end_turns_left=d.get("endTurnsLeft"),
                 participants_can_score=d.get("participantsCanScore", False),
+                stay_on_own_player=d.get("stayOnOwnPlayer", False),
                 created_at=d["createdAt"], updated_at=d["updatedAt"],
                 finished_at=d.get("finishedAt"), deleted_at=d.get("deletedAt"),
                 revision=self.revisions.get(),
@@ -149,6 +150,8 @@ class _Applier:
             existing.profile_id = d.get("profileId")
             existing.rules = wire.rules_in(d["rules"])
             existing.participants_can_score = d.get("participantsCanScore", False)
+            if "stayOnOwnPlayer" in d:
+                existing.stay_on_own_player = d["stayOnOwnPlayer"]
             existing.deleted_at = d.get("deletedAt")
         elif not can_score(self.user, existing):
             self.reject("game", d["id"], "forbidden")

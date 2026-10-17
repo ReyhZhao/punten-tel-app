@@ -34,6 +34,7 @@ in code gebruiken we de Engelse naam uit de tweede kolom.
 | **Uitnodigcode** | `InviteCode` | 6-cijferige code (ook als QR-code) die een speler in Account toont, zodat een medespeler hem zonder e-mailadres kan uitnodigen. 10 minuten geldig; een nieuwe vervangt de oude. |
 | **Deelnemer**     | gekoppelde `Player` | Uitgenodigd account; ziet het spel en de uitslag. |
 | **Deelnemers mogen scores bijhouden** | `participantsCanScore` | Instelling per spel: deelnemers mogen dan ook boeken. |
+| **Invoer op eigen speler** | `stayOnOwnPlayer` | Instelling per spel (naast *deelnemers mogen scores bijhouden*): na een boeking springt de invoer terug naar je eigen speler in plaats van naar de volgende. Voor als iedereen op de eigen telefoon boekt. |
 | **Spel verlaten** | `leave`      | Een deelnemer haalt zichzelf uit een gedeeld spel. |
 | **Eigenaar overdragen** | `transfer` | De eigenaar maakt een uitgenodigde speler eigenaar; zelf blijft hij meespelen. |
 | **Pushmelding**  | `PushDevice` | Melding op je iPhone als je wordt uitgenodigd, een spel afloopt of aan jou wordt overgedragen. |

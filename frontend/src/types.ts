@@ -82,6 +82,8 @@ export interface Game {
   ownerId?: string | null;
   /** Uitgenodigde spelers mogen ook scores bijhouden. */
   participantsCanScore?: boolean;
+  /** Invoer op eigen speler: na een boeking springt de invoer terug naar je eigen speler. */
+  stayOnOwnPlayer?: boolean;
   /** Verwijderd (tombstone). */
   deletedAt?: number | null;
 }
@@ -134,6 +136,7 @@ export interface GameDraft {
   sortPlayers: boolean;
   players: Player[];
   participantsCanScore?: boolean;
+  stayOnOwnPlayer?: boolean;
 }
 
 export interface Actions {
@@ -153,5 +156,6 @@ export interface Actions {
   /** Onthoud het account bij een bewaarde speler (na opzoeken op e-mail). */
   rememberAccount: (playerName: string, accountId: string | null) => void;
   setParticipantsCanScore: (gameId: string, on: boolean) => void;
+  setStayOnOwnPlayer: (gameId: string, on: boolean) => void;
   linkPlayer: (gameId: string, playerId: string, accountId: string | null) => void;
 }

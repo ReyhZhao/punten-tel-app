@@ -68,8 +68,17 @@ struct SharingView: View {
                     set: { store.setParticipantsCanScore($0, in: gameId) }
                 ))
                 .tint(Theme.positive)
+                if game.participantsCanScore {
+                    Toggle("Invoer op eigen speler", isOn: Binding(
+                        get: { game.stayOnOwnPlayer },
+                        set: { store.setStayOnOwnPlayer($0, in: gameId) }
+                    ))
+                    .tint(Theme.positive)
+                }
             } footer: {
-                Text("Uitgenodigde spelers kunnen dan ook punten boeken en boekingen ongedaan maken.")
+                Text(game.participantsCanScore
+                     ? "Uitgenodigde spelers kunnen dan ook punten boeken en boekingen ongedaan maken. Met invoer op eigen speler boekt iedereen op de eigen telefoon: na een boeking springt de invoer terug naar je eigen speler."
+                     : "Uitgenodigde spelers kunnen dan ook punten boeken en boekingen ongedaan maken.")
             }
 
             Section {

@@ -215,6 +215,7 @@ export function useAppState() {
         finished: false,
         ownerId: null,
         participantsCanScore: !!draft.participantsCanScore,
+        stayOnOwnPlayer: !!draft.participantsCanScore && !!draft.stayOnOwnPlayer,
         deletedAt: null,
       };
       setSt((s) => {
@@ -365,6 +366,10 @@ export function useAppState() {
     /** Eigenaar: mogen alle (gekoppelde) spelers scores invoeren? */
     setParticipantsCanScore: (gameId: string, on: boolean) =>
       setSt((s) => withGame(s, gameId, (g) => ({ ...g, participantsCanScore: on, lastPlayed: Date.now() }))),
+
+    /** Eigenaar: invoer op eigen speler (alleen zinvol als alle spelers mogen scoren). */
+    setStayOnOwnPlayer: (gameId: string, on: boolean) =>
+      setSt((s) => withGame(s, gameId, (g) => ({ ...g, stayOnOwnPlayer: on, lastPlayed: Date.now() }))),
 
     /** Eigenaar: speler aan een account koppelen (uitnodigen) of ontkoppelen (null). */
     linkPlayer: (gameId: string, playerId: string, accountId: string | null) =>

@@ -63,7 +63,7 @@ interface Rules {
 }
 interface GameDTO {
   id: string; ownerId?: string | null; name: string; profileId: string | null; rules: Rules;
-  endTurnsLeft: number | null; participantsCanScore: boolean; createdAt: string; updatedAt: string;
+  endTurnsLeft: number | null; participantsCanScore: boolean; stayOnOwnPlayer?: boolean; createdAt: string; updatedAt: string;
   finishedAt: string | null; deletedAt: string | null;
 }
 interface PlayerDTO {
@@ -115,6 +115,7 @@ export function buildSyncRequest(st: AppState, me: string | null) {
     changes.games.push({
       id: g.id, name: g.name.slice(0, 80), profileId: g.profileId, rules: rulesOf(g),
       endTurnsLeft: g.endTurnsLeft ?? null, participantsCanScore: !!g.participantsCanScore,
+      stayOnOwnPlayer: !!g.stayOnOwnPlayer,
       createdAt: iso(g.createdAt)!, updatedAt: iso(g.lastPlayed)!,
       finishedAt: g.finished ? iso(g.lastPlayed) : null, deletedAt: iso(g.deletedAt),
     });
@@ -174,6 +175,7 @@ export function applySyncResponse(st: AppState, r: SyncResponse, sent: SyncSnaps
       maxScore: d.rules.maxScore ?? null, maxRounds: d.rules.maxRounds ?? null,
       endMode: d.rules.endMode, sortPlayers: d.rules.sortPlayers,
       endTurnsLeft: d.endTurnsLeft, participantsCanScore: d.participantsCanScore,
+      stayOnOwnPlayer: !!d.stayOnOwnPlayer,
       createdAt: ms(d.createdAt)!, lastPlayed: ms(d.updatedAt)!,
       finished: d.finishedAt != null, deletedAt: ms(d.deletedAt), ownerId: d.ownerId ?? null,
     } as Game);

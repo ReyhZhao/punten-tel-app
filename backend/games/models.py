@@ -27,6 +27,8 @@ class Game(models.Model):
     end_turns_left = models.IntegerField(null=True, blank=True)
     # "Deelnemers mogen scores bijhouden": gekoppelde spelers mogen dan ook boeken.
     participants_can_score = models.BooleanField(default=False)
+    # "Invoer op eigen speler": bij boeken blijft de invoer op je eigen speler staan.
+    stay_on_own_player = models.BooleanField(default=False)
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
     finished_at = models.DateTimeField(null=True, blank=True)

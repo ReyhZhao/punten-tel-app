@@ -96,6 +96,22 @@ export default function ShareSheet({ theme: t, game, actions, onClose }: Props) 
             style={{ width: 24, height: 24, accentColor: '#34C759' }}
           />
         </label>
+        {game.participantsCanScore && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+            <div style={{ flex: 1 }}>
+              <div style={label}>Invoer op eigen speler</div>
+              <div style={{ fontSize: 13, color: t.muted, marginTop: 2 }}>
+                Iedereen boekt op de eigen telefoon; na een boeking springt de invoer terug naar je eigen speler
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={!!game.stayOnOwnPlayer}
+              onChange={(e) => actions.setStayOnOwnPlayer(game.id, e.target.checked)}
+              style={{ width: 24, height: 24, accentColor: '#34C759' }}
+            />
+          </label>
+        )}
 
         <div style={{ ...label, marginTop: 8 }}>Eigenaar overdragen</div>
         {candidates.length === 0 ? (

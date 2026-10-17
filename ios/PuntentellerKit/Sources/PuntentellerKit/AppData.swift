@@ -65,6 +65,7 @@ public struct AppData: Codable, Hashable, Sendable {
         players newPlayers: [NewPlayer],
         profileId: UUID? = nil,
         participantsCanScore: Bool = false,
+        stayOnOwnPlayer: Bool = false,
         at now: Date = .now
     ) -> Game {
         var game = Game.start(
@@ -77,6 +78,7 @@ public struct AppData: Codable, Hashable, Sendable {
             at: now
         )
         game.participantsCanScore = participantsCanScore
+        game.stayOnOwnPlayer = participantsCanScore && stayOnOwnPlayer
         for i in game.players.indices {
             let p = game.players[i]
             if let si = savedPlayers.firstIndex(where: { $0.name.caseInsensitiveCompare(p.name) == .orderedSame }) {
@@ -100,6 +102,14 @@ public struct AppData: Codable, Hashable, Sendable {
     public mutating func setParticipantsCanScore(_ on: Bool, in gameId: UUID, at now: Date = .now) {
         updateGame(gameId) { game in
             game.participantsCanScore = on
+            game.updatedAt = now
+        }
+    }
+
+    /// Eigenaar: invoer op eigen speler (alleen zinvol als alle spelers mogen scoren).
+    public mutating func setStayOnOwnPlayer(_ on: Bool, in gameId: UUID, at now: Date = .now) {
+        updateGame(gameId) { game in
+            game.stayOnOwnPlayer = on
             game.updatedAt = now
         }
     }

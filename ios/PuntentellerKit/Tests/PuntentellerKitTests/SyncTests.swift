@@ -231,4 +231,30 @@ private let sharedGameJSON = """
         #expect(dto.participantsCanScore)
         #expect(dto.updatedAt == later)
     }
+
+    @Test func stayOnOwnPlayerIsSent() throws {
+        var data = AppData()
+        let g = data.startGame(name: "x", rules: GameRules(), playerNames: ["a", "b"])
+        data.setStayOnOwnPlayer(true, in: g.id, at: g.updatedAt.addingTimeInterval(5))
+        let dto = try #require(data.syncRequest(me: me).0.changes.games.first)
+        #expect(dto.stayOnOwnPlayer == true)
+    }
+
+    @Test func inputStaysOnOwnPlayerOnlyWhenEnabledAndAllowed() throws {
+        var data = AppData()
+        // Ouder serverantwoord zonder stayOnOwnPlayer: staat uit.
+        data.applySync(try response(sharedGameJSON), sent: SyncSnapshot(games: [:], profiles: [:]))
+        var game = try #require(data.games.first)
+        let wij = try #require(game.players.first { $0.name == "Wij" })
+        #expect(game.ownInputPlayer(as: me) == nil)
+
+        game.stayOnOwnPlayer = true
+        #expect(game.ownInputPlayer(as: me) == nil)  // deelnemer mag (nog) niet boeken
+        game.participantsCanScore = true
+        #expect(game.ownInputPlayer(as: me) == wij.id)
+        #expect(game.ownInputPlayer(as: me.uppercased()) == wij.id)
+        #expect(game.ownInputPlayer(as: nil) == nil)
+        // Eigenaar zonder eigen speler in dit spel: invoer schuift gewoon door.
+        #expect(game.ownInputPlayer(as: anna) == nil)
+    }
 }

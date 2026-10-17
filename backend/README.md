@@ -78,7 +78,7 @@ Ontkoppelen doet hij door `accountId` weer op `null` te zetten.
   "changes": {                 // alles optioneel
     "gameProfiles": [{ "id", "name", "rules", "updatedAt", "deletedAt" }],
     "games":        [{ "id", "name", "profileId", "rules", "endTurnsLeft", "participantsCanScore",
-                       "createdAt", "updatedAt", "finishedAt", "deletedAt" }],
+                       "stayOnOwnPlayer", "createdAt", "updatedAt", "finishedAt", "deletedAt" }],
     "players":      [{ "id", "gameId", "name", "color", "position", "accountId", "updatedAt" }],
     "scoreEntries": [{ "id", "gameId", "playerId", "delta", "createdAt", "undoneAt" }]
   }
@@ -106,6 +106,8 @@ Regels:
 - **Eigenaar:** wijzigt het spel, de spelers en de koppelingen.
 - **Deelnemers:** zien het spel. Met `participantsCanScore` mogen ze ook
   boeken, boekingen ongedaan maken en `endTurnsLeft`/`finishedAt` bijwerken.
+- **Invoer op eigen speler** (`stayOnOwnPlayer`): alleen de eigenaar zet dit.
+  Een client die het veld niet meestuurt (oudere app) laat de waarde staan.
 - **Gedeelde spellen:** wie toegang krijgt, ontvangt het hele spel, ook
   oudere boekingen. Wie toegang verliest, krijgt het spel in `removedGameIds`.
 - **Antwoord:** bevat ook je eigen wijzigingen, met wat de server ervan maakte.

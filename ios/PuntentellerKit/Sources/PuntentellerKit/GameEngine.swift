@@ -139,7 +139,7 @@ extension Game {
         }
         return Game(
             name: name, profileId: profileId, rules: rules, players: fresh, createdAt: now,
-            participantsCanScore: participantsCanScore
+            participantsCanScore: participantsCanScore, stayOnOwnPlayer: stayOnOwnPlayer
         )
     }
 

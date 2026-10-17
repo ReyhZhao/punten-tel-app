@@ -30,7 +30,11 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
   const [leaveError, setLeaveError] = useState<string | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [amount, setAmount] = useState('1');
-  const [selectedId, setSelectedId] = useState<string | null>(game.players[0]?.id ?? null);
+  // Invoer op eigen speler: de invoer staat op je eigen speler en springt daar
+  // na elke boeking naar terug (op je eigen telefoon boek je voor jezelf).
+  const ownPlayerId = (mayScore && game.stayOnOwnPlayer && sync.accountId
+    ? game.players.find((p) => p.accountId === sync.accountId)?.id : undefined) ?? null;
+  const [selectedId, setSelectedId] = useState<string | null>(ownPlayerId ?? game.players[0]?.id ?? null);
   const [floats, setFloats] = useState<FloatEntry[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -38,6 +42,11 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
   const [turnIdx, setTurnIdx] = useState(0);
   const [remaining, setRemaining] = useState(game.timerSecs || 60);
   const [running, setRunning] = useState(false);
+
+  // De instelling kan tijdens het spel aangaan (of via sync binnenkomen).
+  useEffect(() => {
+    if (ownPlayerId) setSelectedId(ownPlayerId);
+  }, [ownPlayerId]);
 
   useEffect(() => {
     if (!game.timerOn || !running) return;
@@ -53,7 +62,7 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
     setTurnIdx(ni);
     setRemaining(game.timerSecs || 60);
     setRunning(true);
-    setSelectedId(game.players[ni].id);
+    setSelectedId(ownPlayerId ?? game.players[ni].id);
   };
 
   const amt = Math.max(0, parseInt(amount || '0', 10) || 0);
@@ -69,9 +78,12 @@ export default function ScoringScreen({ theme, game, actions }: Props) {
     setFloats((f) => [...f, { key, playerId: selected.id, delta }]);
     setTimeout(() => setFloats((f) => f.filter((x) => x.key !== key)), 900);
     setAmount('0');
-    const idx = game.players.findIndex((p) => p.id === selected.id);
-    const next = game.players[(idx + 1) % game.players.length];
-    setSelectedId(next.id);
+    if (ownPlayerId) {
+      setSelectedId(ownPlayerId);
+    } else {
+      const idx = game.players.findIndex((p) => p.id === selected.id);
+      setSelectedId(game.players[(idx + 1) % game.players.length].id);
+    }
     // Het einde van het spel (max bereikt, ronde afmaken, extra beurten) wordt
     // centraal in applyScore afgehandeld; die zet zo nodig het winnaarsscherm.
   };

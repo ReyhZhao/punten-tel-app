@@ -196,6 +196,7 @@ enum PWA {
         let finished: Bool?
         let ownerId: String?
         let participantsCanScore: Bool?
+        let stayOnOwnPlayer: Bool?
         let deletedAt: Double?
 
         var rules: GameRules {
@@ -260,7 +261,8 @@ enum PWA {
                 updatedAt: lastPlayed,
                 finishedAt: (finished ?? false) ? lastPlayed : nil,
                 ownerId: ownerId?.lowercased(),
-                participantsCanScore: participantsCanScore ?? false
+                participantsCanScore: participantsCanScore ?? false,
+                stayOnOwnPlayer: stayOnOwnPlayer ?? false
             )
             return (game, corrections)
         }
