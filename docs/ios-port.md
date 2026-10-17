@@ -41,11 +41,18 @@ Nog nodig:
 
 ## Fase 2 — App Store
 
+Teksten, privacylabel, leeftijdsclassificatie, review-notities en de volledige
+checklist staan in [`app-store.md`](app-store.md).
+
 - [x] Team-id in het project
-- [ ] App Store Connect-record
-- [ ] Privacybeleid-URL (lokale data; straks ook account- en sync-data)
-- [ ] Screenshots (6,9"), beschrijving (NL/EN), leeftijdsclassificatie
-- [ ] TestFlight-beta
+- [x] TestFlight-builds (App Store Connect-record bestaat)
+- [x] Export compliance (`ITSAppUsesNonExemptEncryption = NO`)
+- [x] Privacybeleid en supportpagina (`/privacy`, `/support` op punten.vels.online)
+- [x] Privacy-manifest (`PrivacyInfo.xcprivacy`)
+- [x] Screenshots 6,9", beschrijving NL/EN, trefwoorden, privacylabel, leeftijdsclassificatie (`app-store.md`)
+- [x] Review-account met vaste code (backend)
+- [ ] Review-code in Vault en `api.review.email` invullen; PWA en API uitrollen
+- [ ] Ter review indienen
 
 ## Fase 3 — Sync (zie `backend/README.md`, ADR-0003)
 

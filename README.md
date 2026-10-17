@@ -22,7 +22,8 @@ Deze repo bevat meerdere apps naast elkaar (zie
 - [`docs/design-handoff.md`](docs/design-handoff.md) — design tokens, schermen en interacties (Confetti-thema).
 - [`docs/ios-port.md`](docs/ios-port.md) — plan en feature-checklist voor de iOS-port.
 - [`docs/adr/`](docs/adr/) — architectuurbeslissingen.
-- [`backend/README.md`](backend/README.md) — ontwerp van de toekomstige sync-backend.
+- [`backend/README.md`](backend/README.md) — API, sync, realtime, pushmeldingen en uitrol van de backend.
+- [`docs/app-store.md`](docs/app-store.md) — App Store-teksten, privacylabel en checklist.
 
 ## Ontwikkelen
 
