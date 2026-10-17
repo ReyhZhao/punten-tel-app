@@ -41,6 +41,12 @@ api:
     teamId: "W38CK4LB5F"
     topic: "online.vels.puntenteller"
     secretName: backend-apns-secret
+  # Account voor Apple's app-review: vaste inlogcode uit Vault
+  # (kv/puntenteller, property REVIEW_ACCOUNT_CODE), er wordt niets gemaild.
+  # Leeg = uit.
+  review:
+    email: ""
+    secretName: backend-review-secret
 # PostgreSQL via CloudNativePG (de operator moet in het cluster draaien).
 # De backend leest host, poort, database, gebruiker en wachtwoord uit de
 # Secret "<clusterName>-app" die CNPG aanmaakt.

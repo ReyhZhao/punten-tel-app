@@ -6,6 +6,8 @@ Aanmelden en inloggen zonder wachtwoord.
 2. `POST auth/verify` met e-mail en code: geeft een token voor dit toestel.
 """
 
+import hmac
+
 from django.conf import settings
 from django.core.cache import cache
 from django.db import transaction
@@ -30,6 +32,11 @@ def error(code: str, detail: str, http_status: int) -> Response:
     return Response({"code": code, "detail": detail}, status=http_status)
 
 
+def is_review_account(email: str) -> bool:
+    """Het review-account voor Apple (vaste code, geen e-mail); zie settings."""
+    return bool(settings.REVIEW_ACCOUNT_EMAIL and settings.REVIEW_ACCOUNT_CODE) and email == settings.REVIEW_ACCOUNT_EMAIL
+
+
 class RequestCodeView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [ScopedRateThrottle]
@@ -45,6 +52,12 @@ class RequestCodeView(APIView):
         if cache.get(key, 0) >= CODES_PER_EMAIL_PER_HOUR:
             return error("too_many_requests", "Te veel codes aangevraagd. Probeer het over een uur opnieuw.",
                          status.HTTP_429_TOO_MANY_REQUESTS)
+
+        if is_review_account(email):
+            user, created = User.objects.get_or_create(
+                email=email, defaults={"display_name": display_name or "App Review"}
+            )
+            return Response({"sent": True, "newAccount": created}, status=status.HTTP_202_ACCEPTED)
 
         user = User.objects.filter(email=email).first()
         if user is None:
@@ -78,6 +91,17 @@ class VerifyCodeView(APIView):
         data.is_valid(raise_exception=True)
         email = normalize_email(data.validated_data["email"])
         invalid = error("invalid_code", "Deze code klopt niet.", status.HTTP_400_BAD_REQUEST)
+
+        if is_review_account(email):
+            user = User.objects.filter(email=email, is_active=True).first()
+            code = data.validated_data["code"].strip()
+            if user is None or not hmac.compare_digest(code, settings.REVIEW_ACCOUNT_CODE):
+                return invalid
+            if not user.is_verified:
+                user.is_verified = True
+                user.save(update_fields=["is_verified"])
+            _, key = AuthToken.create_for(user, data.validated_data.get("deviceName", ""))
+            return Response({"token": key, "account": AccountSerializer(user).data})
 
         with transaction.atomic():
             login = (

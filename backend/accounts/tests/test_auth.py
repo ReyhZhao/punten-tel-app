@@ -3,7 +3,7 @@ from datetime import timedelta
 
 from django.core import mail
 from django.core.cache import cache
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -124,3 +124,36 @@ class AccountTests(TestCase):
     def test_delete_account(self):
         self.assertEqual(self.client.delete("/api/v1/me").status_code, 204)
         self.assertFalse(User.objects.filter(pk=self.user.pk).exists())
+
+
+@override_settings(REVIEW_ACCOUNT_EMAIL="review@vels.online", REVIEW_ACCOUNT_CODE="246810")
+class ReviewAccountTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+
+    def test_review_account_logs_in_with_fixed_code_without_email(self):
+        r = self.client.post("/api/v1/auth/request-code", {"email": "Review@vels.online"}, format="json")
+        self.assertEqual(r.status_code, 202)
+        self.assertEqual(len(mail.outbox), 0)
+        r = self.client.post("/api/v1/auth/verify", {"email": "review@vels.online", "code": "246810"}, format="json")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.json()["account"]["displayName"], "App Review")
+        self.assertTrue(User.objects.get(email="review@vels.online").is_verified)
+
+    def test_wrong_code_is_rejected(self):
+        self.client.post("/api/v1/auth/request-code", {"email": "review@vels.online"}, format="json")
+        r = self.client.post("/api/v1/auth/verify", {"email": "review@vels.online", "code": "111111"}, format="json")
+        self.assertEqual(r.json()["code"], "invalid_code")
+
+    def test_other_addresses_are_unaffected(self):
+        r = self.client.post("/api/v1/auth/request-code", {"email": "iemand@example.com", "displayName": "X"}, format="json")
+        self.assertEqual(r.status_code, 202)
+        self.assertEqual(len(mail.outbox), 1)
+        r = self.client.post("/api/v1/auth/verify", {"email": "iemand@example.com", "code": "246810"}, format="json")
+        self.assertEqual(r.status_code, 400)
+
+    @override_settings(REVIEW_ACCOUNT_CODE="")
+    def test_disabled_without_code(self):
+        r = self.client.post("/api/v1/auth/request-code", {"email": "review@vels.online"}, format="json")
+        self.assertEqual(r.json()["code"], "account_not_found")

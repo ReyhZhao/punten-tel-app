@@ -156,6 +156,12 @@ PUSH_ASYNC = True  # in een achtergrond-thread versturen (tests: synchroon)
 LOGIN_CODE_TTL_MINUTES = int(env("LOGIN_CODE_TTL_MINUTES", "15"))
 LOGIN_CODE_MAX_ATTEMPTS = 5
 
+# Account voor Apple's app-review: reviewers kunnen geen e-mail ontvangen, dus
+# voor dit ene adres geldt een vaste code (uit Vault) en wordt niets gemaild.
+# Leeg = uit.
+REVIEW_ACCOUNT_EMAIL = (env("REVIEW_ACCOUNT_EMAIL", "") or "").strip().lower()
+REVIEW_ACCOUNT_CODE = (env("REVIEW_ACCOUNT_CODE", "") or "").strip()
+
 # Achter een reverse proxy (ingress) die TLS afhandelt.
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
