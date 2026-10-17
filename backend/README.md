@@ -16,6 +16,7 @@ backend/
   accounts/       # account, inlogcodes, tokens, /me
   games/          # Game, Player, ScoreEntry, GameProfile, sync, uitnodigen
   notifications/  # pushmeldingen (Apple Push Notification service)
+  polaris/        # beveiligingsmeldingen naar Polaris Security (SOC)
 ```
 
 ## Lokaal ontwikkelen
@@ -169,6 +170,9 @@ de Secret klaar heeft, wacht de pod vanzelf.
 | `DEFAULT_FROM_EMAIL` | `Puntenteller <noreply@vels.online>` | |
 | `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`, `APNS_TOPIC` | `—, —, —, online.vels.puntenteller` | pushmeldingen; zonder sleutel uit |
 | `THROTTLE_AUTH`, `THROTTLE_LOOKUP` | `20/hour`, `30/hour` | per IP resp. per gebruiker |
+| `POLARIS_ALERT_INGEST_URL`, `POLARIS_ASSET_INGEST_URL` | — | geheim (Vault); leeg = uit. Zie Polaris hieronder |
+| `POLARIS_HOST_NAME`, `POLARIS_HOST_IP` | — | in de chart: de node (downward API) |
+| `POLARIS_ENVIRONMENT`, `APP_VERSION` | `production` (`development` met debug), — | in de chart: `api.polaris.environment` en de image-tag |
 
 ### Pushmeldingen
 
@@ -192,6 +196,22 @@ meldt, worden opgeruimd. Zonder sleutel staat push uit; de rest werkt gewoon.
 
 Eén sleutel werkt voor zowel de sandbox (builds vanuit Xcode) als productie
 (TestFlight en App Store). De app meldt zelf welke omgeving hij gebruikt.
+
+### Polaris Security
+
+De backend meldt beveiligingsgebeurtenissen (brute force op inlogcodes,
+ongeldige tokens, enumeratie, geweigerde wijzigingen, admin-logins, nieuwe
+beheerders) als alerts aan de SOC van Polaris, en houdt de inventaris bij: de
+node en de beheerders. Detecties, mapping en testprocedure staan in
+[`POLARIS_INTEGRATION.md`](../POLARIS_INTEGRATION.md).
+
+- Versturen gaat in een achtergrond-thread per proces, in batches, met retry
+  en een begrensde buffer. Een trage of onbereikbare Polaris raakt de API niet.
+- De ingest-URL's zijn het enige wachtwoord. Ze staan in Vault, nooit in git,
+  en in logs alleen met de laatste 4 tekens.
+- Eenmalig: `vault kv patch kv/puntenteller POLARIS_ALERT_INGEST_URL='…' POLARIS_ASSET_INGEST_URL='…'`
+- Testen: `python manage.py polaris_test_events` (één test-alert per
+  detectie) en in de pod `python manage.py polaris_sync_assets`.
 
 ### Realtime (SSE)
 

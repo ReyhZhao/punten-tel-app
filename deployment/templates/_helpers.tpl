@@ -54,4 +54,29 @@ De databasegegevens komen uit de Secret die CloudNativePG aanmaakt:
       optional: true
 {{- end }}
 {{- end }}
+- name: APP_VERSION
+  value: {{ .Values.api.image.tag | quote }}
+{{- with .Values.api.polaris }}
+{{- if .enabled }}
+- name: POLARIS_ENVIRONMENT
+  value: {{ .environment | quote }}
+# De node, niet de pod: podnamen wisselen bij elke uitrol (host.name in Polaris).
+- name: POLARIS_HOST_NAME
+  valueFrom:
+    fieldRef:
+      fieldPath: spec.nodeName
+- name: POLARIS_HOST_IP
+  valueFrom:
+    fieldRef:
+      fieldPath: status.hostIP
+{{- range $env := list "POLARIS_ALERT_INGEST_URL" "POLARIS_ASSET_INGEST_URL" }}
+- name: {{ $env }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ $.Values.api.polaris.secretName }}
+      key: {{ $env }}
+      optional: true
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end }}

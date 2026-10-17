@@ -47,6 +47,13 @@ api:
   review:
     email: "apple@vels.online"
     secretName: backend-review-secret
+  # Beveiligingsmeldingen naar Polaris Security (SOC), zie POLARIS_INTEGRATION.md.
+  # De ingest-URL's zijn geheim en staan in Vault (kv/puntenteller, properties
+  # POLARIS_ALERT_INGEST_URL en POLARIS_ASSET_INGEST_URL). false = uit.
+  polaris:
+    enabled: true
+    environment: "production"
+    secretName: backend-polaris-secret
 # PostgreSQL via CloudNativePG (de operator moet in het cluster draaien).
 # De backend leest host, poort, database, gebruiker en wachtwoord uit de
 # Secret "<clusterName>-app" die CNPG aanmaakt.

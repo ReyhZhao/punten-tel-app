@@ -2,10 +2,11 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers, status
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from accounts.models import InviteCode, normalize_email
+from polaris import detections
+from polaris.throttling import ReportingScopedRateThrottle
 
 from . import sync as sync_service
 from .access import visible_games
@@ -21,6 +22,8 @@ class SyncView(APIView):
         result = sync_service.sync(
             request.user, data.validated_data.get("cursor"), data.validated_data.get("changes") or {}
         )
+        if forbidden := sum(r.reason == "forbidden" for r in result.rejected):
+            detections.access_denied(request, forbidden, "sync")
         return Response(result.as_dict())
 
 
@@ -42,7 +45,7 @@ class AccountLookupView(APIView):
     Begrensd per gebruiker tegen het raden van adressen en codes.
     """
 
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [ReportingScopedRateThrottle]
     throttle_scope = "lookup"
 
     def post(self, request):
@@ -51,6 +54,7 @@ class AccountLookupView(APIView):
         if "code" in data.validated_data:
             user = InviteCode.find_user(data.validated_data["code"])
             if user is None:
+                detections.lookup_missed(request, "invite_code")
                 return Response(
                     {"code": "invite_code_not_found", "detail": "Deze code klopt niet of is verlopen."},
                     status=status.HTTP_404_NOT_FOUND,
@@ -60,6 +64,7 @@ class AccountLookupView(APIView):
                 email=normalize_email(data.validated_data["email"]), is_verified=True, is_active=True
             ).first()
             if user is None:
+                detections.lookup_missed(request, "email")
                 return Response(
                     {"code": "account_not_found", "detail": "Er is geen account met dit e-mailadres."},
                     status=status.HTTP_404_NOT_FOUND,
@@ -84,6 +89,8 @@ class TransferGameView(APIView):
                 request.user, game, data.validated_data["accountId"], data.validated_data.get("ownerPlayerId")
             )
         except sync_service.TransferError as e:
+            if e.code == "forbidden":
+                detections.access_denied(request, 1, "transfer")
             code = status.HTTP_403_FORBIDDEN if e.code == "forbidden" else status.HTTP_400_BAD_REQUEST
             return Response({"code": e.code, "detail": e.detail}, status=code)
         return Response(status=status.HTTP_204_NO_CONTENT)

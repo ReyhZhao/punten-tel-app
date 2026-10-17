@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "accounts",
     "games",
     "notifications",
+    "polaris",
 ]
 
 MIDDLEWARE = [
@@ -163,6 +164,17 @@ INVITE_CODE_TTL_MINUTES = int(env("INVITE_CODE_TTL_MINUTES", "10"))
 REVIEW_ACCOUNT_EMAIL = (env("REVIEW_ACCOUNT_EMAIL", "") or "").strip().lower()
 REVIEW_ACCOUNT_CODE = (env("REVIEW_ACCOUNT_CODE", "") or "").strip()
 
+# Beveiligingsmeldingen naar Polaris Security (SOC), zie polaris/client.py en
+# POLARIS_INTEGRATION.md. De URL's zijn geheim (Vault); leeg = dat deel staat uit.
+POLARIS_ALERT_INGEST_URL = (env("POLARIS_ALERT_INGEST_URL", "") or "").strip()
+POLARIS_ASSET_INGEST_URL = (env("POLARIS_ASSET_INGEST_URL", "") or "").strip()
+POLARIS_ENVIRONMENT = env("POLARIS_ENVIRONMENT", "development" if DEBUG else "production")
+# De Kubernetes-node waarop de pod draait (downward API); leeg = geen host.name.
+POLARIS_HOST_NAME = env("POLARIS_HOST_NAME", "")
+POLARIS_HOST_IP = env("POLARIS_HOST_IP", "")
+POLARIS_ASYNC = True  # in een achtergrond-thread versturen (tests: zelf flushen)
+APP_VERSION = env("APP_VERSION", "")
+
 # Achter een reverse proxy (ingress) die TLS afhandelt.
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
@@ -174,4 +186,6 @@ LOGGING = {
     "disable_existing_loggers": False,
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", "INFO")},
+    # httpx logt elk verzoek met de volledige URL op INFO; de Polaris-URL is een wachtwoord.
+    "loggers": {"httpx": {"level": "WARNING"}, "httpcore": {"level": "WARNING"}},
 }

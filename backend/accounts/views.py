@@ -15,11 +15,12 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from games.access import revoke_all_for_owner
 from games.serializers import iso
+from polaris import detections
+from polaris.throttling import ReportingScopedRateThrottle
 
 from .emails import send_login_code
 from .models import AuthToken, InviteCode, LoginCode, User, normalize_email
@@ -40,7 +41,7 @@ def is_review_account(email: str) -> bool:
 
 class RequestCodeView(APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [ReportingScopedRateThrottle]
     throttle_scope = "auth"
 
     def post(self, request):
@@ -51,6 +52,7 @@ class RequestCodeView(APIView):
 
         key = f"login-codes:{email}"
         if cache.get(key, 0) >= CODES_PER_EMAIL_PER_HOUR:
+            detections.code_request_limited(request, email)
             return error("too_many_requests", "Te veel codes aangevraagd. Probeer het over een uur opnieuw.",
                          status.HTTP_429_TOO_MANY_REQUESTS)
 
@@ -84,7 +86,7 @@ class RequestCodeView(APIView):
 
 class VerifyCodeView(APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [ScopedRateThrottle]
+    throttle_classes = [ReportingScopedRateThrottle]
     throttle_scope = "auth"
 
     def post(self, request):
@@ -97,11 +99,14 @@ class VerifyCodeView(APIView):
             user = User.objects.filter(email=email, is_active=True).first()
             code = data.validated_data["code"].strip()
             if user is None or not hmac.compare_digest(code, settings.REVIEW_ACCOUNT_CODE):
+                # Vaste code zonder pogingenlimiet: juist hier meetellen.
+                detections.login_failed(request, email, user)
                 return invalid
             if not user.is_verified:
                 user.is_verified = True
                 user.save(update_fields=["is_verified"])
             _, key = AuthToken.create_for(user, data.validated_data.get("deviceName", ""))
+            detections.login_succeeded(request, user)
             return Response({"token": key, "account": AccountSerializer(user).data})
 
         with transaction.atomic():
@@ -113,15 +118,18 @@ class VerifyCodeView(APIView):
                 .first()
             )
             if login is None:
+                detections.login_failed(request, email)
                 return invalid
             if login.is_expired:
                 return error("code_expired", "Deze code is verlopen. Vraag een nieuwe aan.", status.HTTP_400_BAD_REQUEST)
             if login.attempts >= settings.LOGIN_CODE_MAX_ATTEMPTS:
+                detections.login_failed(request, email, login.user)
                 return error("too_many_attempts", "Te vaak een verkeerde code. Vraag een nieuwe aan.",
                              status.HTTP_400_BAD_REQUEST)
             if not login.matches(data.validated_data["code"]):
                 login.attempts += 1
                 login.save(update_fields=["attempts"])
+                detections.login_failed(request, email, login.user)
                 return invalid
 
             login.used_at = timezone.now()
@@ -132,6 +140,7 @@ class VerifyCodeView(APIView):
                 user.save(update_fields=["is_verified"])
             _, key = AuthToken.create_for(user, data.validated_data.get("deviceName", ""))
 
+        detections.login_succeeded(request, user)
         return Response({"token": key, "account": AccountSerializer(user).data})
 
 

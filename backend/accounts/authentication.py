@@ -3,6 +3,8 @@ from datetime import timedelta
 from django.utils import timezone
 from rest_framework import authentication, exceptions
 
+from polaris import detections
+
 from .models import AuthToken
 
 
@@ -15,8 +17,10 @@ class BearerTokenAuthentication(authentication.BaseAuthentication):
         header = authentication.get_authorization_header(request).decode()
         if not header.startswith(f"{self.keyword} "):
             return None
-        token = AuthToken.lookup(header[len(self.keyword) + 1 :].strip())
+        key = header[len(self.keyword) + 1 :].strip()
+        token = AuthToken.lookup(key)
         if token is None or not token.user.is_active:
+            detections.invalid_token(request, key)
             raise exceptions.AuthenticationFailed("Ongeldig of verlopen token.")
         # Niet bij elk verzoek schrijven; eens per uur is genoeg.
         now = timezone.now()
