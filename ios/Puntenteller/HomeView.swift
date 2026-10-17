@@ -11,6 +11,7 @@ enum Route: Hashable {
 struct HomeView: View {
     @Environment(GameStore.self) private var store
     @Environment(SyncEngine.self) private var sync
+    @Environment(PushManager.self) private var push
     @State private var path: [Route] = []
     @State private var showNewGame = false
     @State private var showSettings = false
@@ -46,6 +47,16 @@ struct HomeView: View {
             }
             .background(Theme.bg)
             .refreshable { await sync.syncNow() }
+            // Tik op een pushmelding: dat spel openen.
+            .onChange(of: push.gameToOpen) { _, id in
+                guard let id else { return }
+                push.gameToOpen = nil
+                showNewGame = false
+                showSettings = false
+                showImport = false
+                Task { await sync.syncNow() }
+                path = [.game(id)]
+            }
             .safeAreaInset(edge: .bottom) {
                 BottomBar {
                     Button { showNewGame = true } label: {
@@ -236,10 +247,12 @@ private struct GameCard: View {
 
 #Preview("Met spellen") {
     let store = GameStore.preview
-    HomeView().environment(store).environment(SyncEngine(store: store))
+    let sync = SyncEngine(store: store)
+    HomeView().environment(store).environment(sync).environment(PushManager(sync: sync))
 }
 
 #Preview("Leeg") {
     let store = GameStore(fileURL: nil)
-    HomeView().environment(store).environment(SyncEngine(store: store))
+    let sync = SyncEngine(store: store)
+    HomeView().environment(store).environment(sync).environment(PushManager(sync: sync))
 }

@@ -60,4 +60,6 @@ Nog nodig:
 - [x] Zelfde functionaliteit in de PWA (`frontend/src/sync.ts`, `useSync.ts`)
 - [x] Spelers uitnodigen in een lopend spel, "Alle spelers mogen scores invoeren" en eigenaar overdragen (Spelers en delen)
 - [x] Realtime updates via SSE (`docs/research/sse-realtime-updates.md`)
-- [ ] Meldingen (push) bij een nieuw gedeeld spel
+- [x] Pushmeldingen (APNs): uitgenodigd, spel afgelopen, overdracht; tik opent het spel
+- [ ] APNs-sleutel in Vault en `api.push.keyId` invullen (zie `backend/README.md`)
+- [ ] Web Push voor de PWA (optioneel)

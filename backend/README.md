@@ -15,6 +15,7 @@ backend/
   puntenteller/   # instellingen, urls, health-check
   accounts/       # account, inlogcodes, tokens, /me
   games/          # Game, Player, ScoreEntry, GameProfile, sync, uitnodigen
+  notifications/  # pushmeldingen (Apple Push Notification service)
 ```
 
 ## Lokaal ontwikkelen
@@ -55,6 +56,8 @@ e-mailadres per uur. Daarnaast geldt een limiet per IP-adres.
 
 | Methode | Pad | Doel |
 |---------|-----|------|
+| `POST` | `/api/v1/push/devices` | `{token, environment}` (`sandbox` of `production`): toestel aanmelden voor pushmeldingen. Gekoppeld aan het login-token; uitloggen meldt het toestel af |
+| `DELETE` | `/api/v1/push/devices/{token}` | Toestel afmelden |
 | `GET` | `/api/v1/events` | Realtime-stream (Server-Sent Events): `event: change` met `data: <cursor>` zodra iets verandert in een spel waar je toegang toe hebt (of toe had); elke 20 s een keep-alive. Krijg je een cursor die hoger is dan je eigen cursor, doe dan een sync. Via de stream gaan geen gegevens |
 | `POST` | `/api/v1/accounts/lookup` | `{email}` → `{id, displayName}`, alleen bij een exacte match met een bevestigd account. De app bewaart `id` als `SavedPlayer.accountId` |
 | `POST` | `/api/v1/games/{id}/leave` | Jezelf uit een gedeeld spel halen |
@@ -161,7 +164,31 @@ de Secret klaar heeft, wacht de pod vanzelf.
 | `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | `—, 5432, puntenteller, puntenteller, —` | zonder host: SQLite. In de chart: uit de CNPG-Secret |
 | `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` | `localhost, 587, —, —, true` | SMTP |
 | `DEFAULT_FROM_EMAIL` | `Puntenteller <noreply@vels.online>` | |
+| `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`, `APNS_TOPIC` | `—, —, —, online.vels.puntenteller` | pushmeldingen; zonder sleutel uit |
 | `THROTTLE_AUTH`, `THROTTLE_LOOKUP` | `20/hour`, `30/hour` | per IP resp. per gebruiker |
+
+### Pushmeldingen
+
+Meldingen gaan alleen bij momenten die ertoe doen als de app dicht is: je bent
+toegevoegd aan een spel, een spel waarin je meedoet is afgelopen (met de
+winnaar), of een spel is aan jou overgedragen. Wie de actie zelf uitvoert,
+krijgt geen melding. Ze gaan na de commit, in een achtergrond-thread, direct
+naar Apple (HTTP/2, token-authenticatie). Toestellen die Apple als ongeldig
+meldt, worden opgeruimd. Zonder sleutel staat push uit; de rest werkt gewoon.
+
+**Eenmalig instellen:**
+
+1. Maak in het Apple Developer-account onder *Certificates, Identifiers &
+   Profiles → Keys* een sleutel aan met **Apple Push Notifications service
+   (APNs)**. Download de `.p8` (dat kan maar één keer) en noteer de *Key ID*.
+2. Zet de inhoud van de `.p8` in Vault:
+   `vault kv patch kv/puntenteller APNS_PRIVATE_KEY=@AuthKey_XXXXXXXXXX.p8`
+3. Vul `api.push.keyId` in `deployment/values.yaml` in. `teamId` en `topic`
+   (bundle-id) staan er al. De chart maakt dan de ExternalSecret
+   `backend-apns-secret` aan, apart van `backend-secret`.
+
+Eén sleutel werkt voor zowel de sandbox (builds vanuit Xcode) als productie
+(TestFlight en App Store). De app meldt zelf welke omgeving hij gebruikt.
 
 ### Realtime (SSE)
 

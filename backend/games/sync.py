@@ -26,6 +26,7 @@ from django.utils import timezone
 from . import serializers as wire
 from .access import can_score, has_access, record_access, visible_games
 from .events import notify
+from notifications import service as push
 from .models import Game, GameAccessEvent, GameProfile, Player, ScoreEntry
 from .revisions import RevisionAllocator, current_revision
 
@@ -67,6 +68,7 @@ def sync(user, cursor: int | None, changes: dict) -> SyncResult:
             # Realtime-seintje aan iedereen die het raakt, pas na de commit.
             users = _accounts_with_access(applier.touched_games) | applier.lost_access
             transaction.on_commit(lambda: notify(users, new_cursor))
+            applier.send_push()
         result = _collect(user, cursor, new_cursor)
         result.rejected = applier.rejected
     return result
@@ -80,6 +82,16 @@ class _Applier:
         # Voor de realtime-seintjes: gewijzigde spellen en wie toegang verloor.
         self.touched_games: set = set()
         self.lost_access: set = set()
+        # Voor pushmeldingen: wie is toegevoegd aan welk spel, welke spellen zijn afgelopen.
+        self.invited: dict = {}
+        self.finished_games: set = set()
+
+    def send_push(self) -> None:
+        for game_id, accounts in self.invited.items():
+            push.invited(Game.objects.get(pk=game_id), accounts, self.user)
+        for game_id in self.finished_games:
+            game = Game.objects.get(pk=game_id)
+            push.finished(game, _accounts_with_access([game_id]), self.user)
 
     def reject(self, type_: str, id_, reason: str) -> None:
         self.rejected.append(Rejection(type_, str(id_), reason))
@@ -142,6 +154,8 @@ class _Applier:
             self.reject("game", d["id"], "forbidden")
             return
         # Spelstatus: eigenaar, of deelnemer die mag boeken.
+        if existing.finished_at is None and d.get("finishedAt") is not None and existing.deleted_at is None:
+            self.finished_games.add(existing.pk)
         existing.end_turns_left = d.get("endTurnsLeft")
         existing.finished_at = d.get("finishedAt")
         existing.updated_at = d["updatedAt"]
@@ -188,6 +202,7 @@ class _Applier:
         if account_id != old_account_id:
             if account_id is not None and not new_had_access:
                 record_access(account_id, game.pk, granted=True, revisions=self.revisions)
+                self.invited.setdefault(game.pk, set()).add(account_id)
             if old_account_id is not None and not has_access(old_account_id, game):
                 record_access(old_account_id, game.pk, granted=False, revisions=self.revisions)
                 self.lost_access.add(old_account_id)
@@ -328,6 +343,7 @@ def transfer(user, game: Game, new_owner_id, owner_player_id=None) -> None:
         game.save(update_fields=["owner", "updated_at", "revision"])
         users, cursor = _accounts_with_access([game.pk]), revisions.used
         transaction.on_commit(lambda: notify(users, cursor))
+        push.transferred(game, new_owner_id, user)
 
 
 def leave(user, game: Game) -> None:

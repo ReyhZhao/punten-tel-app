@@ -35,4 +35,5 @@ in code gebruiken we de Engelse naam uit de tweede kolom.
 | **Deelnemers mogen scores bijhouden** | `participantsCanScore` | Instelling per spel: deelnemers mogen dan ook boeken. |
 | **Spel verlaten** | `leave`      | Een deelnemer haalt zichzelf uit een gedeeld spel. |
 | **Eigenaar overdragen** | `transfer` | De eigenaar maakt een uitgenodigde speler eigenaar; zelf blijft hij meespelen. |
+| **Pushmelding**  | `PushDevice` | Melding op je iPhone als je wordt uitgenodigd, een spel afloopt of aan jou wordt overgedragen. |
 | **Sync**          | `POST /api/v1/sync` | Eigen wijzigingen sturen en die van anderen ophalen, vanaf een cursor. |

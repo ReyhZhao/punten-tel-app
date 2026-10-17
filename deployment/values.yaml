@@ -34,6 +34,13 @@ api:
     user: "puntenteller@vels.online"
     useTls: "true"
     from: "Puntenteller <puntenteller@vels.online>"
+  # Pushmeldingen (Apple Push Notification service). Leeg keyId = push uit.
+  # De .p8-sleutel staat in Vault (kv/puntenteller, property APNS_PRIVATE_KEY).
+  push:
+    keyId: "AD36223QJ3"
+    teamId: "W38CK4LB5F"
+    topic: "online.vels.puntenteller"
+    secretName: backend-apns-secret
 # PostgreSQL via CloudNativePG (de operator moet in het cluster draaien).
 # De backend leest host, poort, database, gebruiker en wachtwoord uit de
 # Secret "<clusterName>-app" die CNPG aanmaakt.

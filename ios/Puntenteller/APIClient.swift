@@ -88,6 +88,10 @@ struct APIClient: Sendable {
         return request
     }
 
+    func registerPushDevice(token: String, environment: String) async throws {
+        let _: Empty = try await send("POST", "push/devices", body: ["token": token, "environment": environment])
+    }
+
     func leave(gameId: UUID) async throws {
         let _: Empty = try await send("POST", "games/\(gameId.uuidString.lowercased())/leave")
     }

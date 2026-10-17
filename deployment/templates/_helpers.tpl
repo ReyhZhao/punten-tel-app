@@ -26,4 +26,20 @@ De databasegegevens komen uit de Secret die CloudNativePG aanmaakt:
   value: {{ .Values.api.email.useTls | quote }}
 - name: DEFAULT_FROM_EMAIL
   value: {{ .Values.api.email.from | quote }}
+{{- with .Values.api.push }}
+{{- if .keyId }}
+- name: APNS_KEY_ID
+  value: {{ .keyId | quote }}
+- name: APNS_TEAM_ID
+  value: {{ .teamId | quote }}
+- name: APNS_TOPIC
+  value: {{ .topic | quote }}
+- name: APNS_PRIVATE_KEY
+  valueFrom:
+    secretKeyRef:
+      name: {{ .secretName }}
+      key: APNS_PRIVATE_KEY
+      optional: true
+{{- end }}
+{{- end }}
 {{- end }}

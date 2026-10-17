@@ -75,4 +75,7 @@ op hun eigen telefoon zien en desgewenst zelf scores bijhouden.
   seconde. Polling blijft als vangnet: elke 60 s met een open stream, anders
   elke 20 s. Daarvoor draait de backend onder uvicorn (ASGI); zie
   `docs/research/sse-realtime-updates.md`.
-- **Nog niet gebouwd:** meldingen (push) bij een nieuw gedeeld spel.
+- **Pushmeldingen (iOS, APNs):** bij uitgenodigd worden, een afgelopen spel
+  en een overdracht; niet bij elke boeking (daarvoor is er realtime). Na het
+  inloggen vraagt de app om toestemming. Tik je op een melding, dan opent het
+  spel. Web Push voor de PWA is nog niet gebouwd.

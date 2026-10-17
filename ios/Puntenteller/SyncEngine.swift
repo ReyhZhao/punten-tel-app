@@ -30,6 +30,8 @@ final class SyncEngine {
     private(set) var isLive = false
 
     @ObservationIgnored private let store: GameStore
+    /// Na een geslaagde login (PushManager vraagt dan om toestemming voor meldingen).
+    @ObservationIgnored var onSignedIn: (() -> Void)?
     @ObservationIgnored private var token: String?
     @ObservationIgnored private var inFlight = false
     @ObservationIgnored private var runAgain = false
@@ -70,6 +72,7 @@ final class SyncEngine {
         setAccount(result.account)
         store.prepareFirstSync()
         restartEventStream()
+        onSignedIn?()
         await syncNow()
     }
 
@@ -99,6 +102,10 @@ final class SyncEngine {
         await syncNow()
         try await api.transfer(gameId: gameId, to: accountId, ownerPlayerId: ownerPlayerId)
         await syncNow()
+    }
+
+    func registerPushDevice(token: String, environment: String) async throws {
+        try await api.registerPushDevice(token: token, environment: environment)
     }
 
     func leave(_ gameId: UUID) async throws {

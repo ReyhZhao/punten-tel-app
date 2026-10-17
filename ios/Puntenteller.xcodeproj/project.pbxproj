@@ -14,6 +14,7 @@
 		A10000000000000000000004 /* Puntenteller.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Puntenteller.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000013 /* PuntentellerKit */ = {isa = PBXFileReference; lastKnownFileType = wrapper; path = PuntentellerKit; sourceTree = "<group>"; };
 		A10000000000000000000014 /* Puntenteller-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Puntenteller-Info.plist"; sourceTree = "<group>"; };
+		A10000000000000000000015 /* Puntenteller.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Puntenteller.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -41,6 +42,7 @@
 			children = (
 				A10000000000000000000005 /* Puntenteller */,
 				A10000000000000000000014 /* Puntenteller-Info.plist */,
+				A10000000000000000000015 /* Puntenteller.entitlements */,
 				A10000000000000000000013 /* PuntentellerKit */,
 				A10000000000000000000003 /* Products */,
 			);
@@ -196,6 +198,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Puntenteller.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = W38CK4LB5F;
@@ -227,6 +230,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Puntenteller.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = W38CK4LB5F;

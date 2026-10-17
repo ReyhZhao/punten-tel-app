@@ -11,6 +11,7 @@ struct SettingsView: View {
 
     @AppStorage(Preferences.keepAwake) private var keepAwake = false
     @Environment(SyncEngine.self) private var sync
+    @Environment(PushManager.self) private var push
     @Environment(\.dismiss) private var dismiss
     @State private var showAccount = false
 
@@ -26,6 +27,18 @@ struct SettingsView: View {
                         )
                     }
                     .foregroundStyle(Theme.text)
+                    if sync.isSignedIn {
+                        Button {
+                            if push.status == .notDetermined {
+                                Task { await push.requestAuthorization() }
+                            } else {
+                                push.openSettings()
+                            }
+                        } label: {
+                            row("bell", "Meldingen", notificationSubtitle)
+                        }
+                        .foregroundStyle(Theme.text)
+                    }
                 }
                 Section {
                     Toggle(isOn: $keepAwake) {
@@ -53,6 +66,17 @@ struct SettingsView: View {
                 }
             }
             .sheet(isPresented: $showAccount) { AccountView() }
+        }
+    }
+
+    private var notificationSubtitle: String {
+        switch push.status {
+        case .authorized, .provisional, .ephemeral:
+            "Aan: bij een uitnodiging, een afgelopen spel of een overdracht"
+        case .denied:
+            "Uit — tik om ze in te schakelen in Instellingen"
+        default:
+            "Tik om meldingen in te schakelen"
         }
     }
 

@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "accounts",
     "games",
+    "notifications",
 ]
 
 MIDDLEWARE = [
@@ -143,6 +144,13 @@ EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", "")
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", "Puntenteller <noreply@vels.online>")
+
+# Pushmeldingen via Apple (APNs). Zonder sleutel staat push uit.
+APNS_KEY_ID = env("APNS_KEY_ID", "")
+APNS_TEAM_ID = env("APNS_TEAM_ID", "")
+APNS_PRIVATE_KEY = env("APNS_PRIVATE_KEY", "")  # inhoud van de .p8-sleutel
+APNS_TOPIC = env("APNS_TOPIC", "online.vels.puntenteller")
+PUSH_ASYNC = True  # in een achtergrond-thread versturen (tests: synchroon)
 
 # Inlogcodes
 LOGIN_CODE_TTL_MINUTES = int(env("LOGIN_CODE_TTL_MINUTES", "15"))
