@@ -1,6 +1,6 @@
 image:
   repository: registry.vels.online/punten/app
-  tag: v1.7.0
+  tag: v1.8.0
   pullPolicy: Always
 # Eén domein voor de PWA (/) en de backend (/api/, /admin/).
 host: punten.vels.online
