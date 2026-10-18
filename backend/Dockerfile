@@ -1,7 +1,7 @@
 # Puntenteller-backend: Django onder uvicorn (ASGI, nodig voor de SSE-stream
 # /api/v1/events). Migraties draaien apart
 # (initContainer in de Helm-chart): `python manage.py migrate --noinput`.
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
