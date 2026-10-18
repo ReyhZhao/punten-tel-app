@@ -14,9 +14,11 @@ interface Props {
   actions: Actions;
   savedPlayers: SavedPlayer[];
   gameProfiles: GameProfile[];
+  /** De bewaarde speler die jij bent; staat meteen in het nieuwe spel. */
+  me?: SavedPlayer;
 }
 
-export default function NewGameScreen({ theme, actions, savedPlayers, gameProfiles }: Props) {
+export default function NewGameScreen({ theme, actions, savedPlayers, gameProfiles, me }: Props) {
   const t = theme;
   const [name, setName] = useState('');
   const [scoring, setScoring] = useState<'high' | 'low'>('high');
@@ -28,22 +30,29 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
   const [maxRoundsVal, setMaxRoundsVal] = useState('10');
   const [endMode, setEndMode] = useState<EndMode>('round');
   const [sortPlayers, setSortPlayers] = useState(false);
-  const [players, setPlayers] = useState<Player[]>([]);
+  const sync = useSyncApi();
+  const signedIn = !!sync.account;
+  const isMe = (name: string) => !!me && me.name.toLowerCase() === name.toLowerCase();
+  /** Eerder uitgenodigd? Dan direct weer met dat account (alleen met een account). Jij krijgt je eigen account. */
+  const knownAccount = (name: string) => {
+    if (!signedIn) return null;
+    if (isMe(name)) return sync.accountId;
+    return savedPlayers.find((sp) => sp.name.toLowerCase() === name.toLowerCase())?.accountId ?? null;
+  };
+  const [players, setPlayers] = useState<Player[]>(() =>
+    me ? [{ id: uid(), name: me.name, color: PLAYER_COLORS[0], score: 0, accountId: knownAccount(me.name) }] : []
+  );
   const [draft, setDraft] = useState('');
   const [focused, setFocused] = useState(false);
   const [profileFocused, setProfileFocused] = useState(false);
   const [activeProfile, setActiveProfile] = useState<GameProfile | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const sync = useSyncApi();
-  const signedIn = !!sync.account;
   /** Id van de speler die uitgenodigd wordt (sheet). */
   const [inviting, setInviting] = useState<string | null>(null);
   const [participantsCanScore, setParticipantsCanScore] = useState(false);
   const [stayOnOwnPlayer, setStayOnOwnPlayer] = useState(false);
-  const anyInvited = signedIn && players.some((p) => p.accountId);
-  /** Eerder uitgenodigd? Dan direct weer met dat account (alleen met een account). */
-  const knownAccount = (name: string) =>
-    signedIn ? savedPlayers.find((sp) => sp.name.toLowerCase() === name.toLowerCase())?.accountId ?? null : null;
+  // Je eigen speler telt niet als uitgenodigd.
+  const anyInvited = signedIn && players.some((p) => p.accountId && p.accountId !== sync.accountId);
 
   const applyProfile = (p: GameProfile) => {
     setActiveProfile(p);
@@ -825,13 +834,17 @@ export default function NewGameScreen({ theme, actions, savedPlayers, gameProfil
                   }}
                 >
                   {p.name}
-                  {signedIn && p.accountId && (
+                  {isMe(p.name) ? (
+                    <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: t.muted, fontFamily: 'inherit' }}>
+                      Jij
+                    </span>
+                  ) : signedIn && p.accountId && (
                     <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#34C759', fontFamily: 'inherit' }}>
                       Uitgenodigd
                     </span>
                   )}
                 </span>
-                {signedIn && (
+                {signedIn && !isMe(p.name) && (
                   <IconBtn
                     theme={t}
                     name={p.accountId ? 'check' : 'share'}

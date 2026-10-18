@@ -133,6 +133,14 @@ public struct AppData: Codable, Hashable, Sendable {
         savedPlayers[i].updatedAt = .now
     }
 
+    /// De bewaarde speler die jij bent: zelf gekozen (`id`), of anders de speler
+    /// die aan jouw account gekoppeld is (bv. via "Dit ben ik" in een gedeeld spel).
+    public func mySavedPlayer(id: UUID?, accountId: String?) -> SavedPlayer? {
+        if let id { return savedPlayers.first { $0.id == id } }
+        guard let accountId else { return nil }
+        return savedPlayers.first { $0.accountId?.caseInsensitiveCompare(accountId) == .orderedSame }
+    }
+
     /// Spelprofielen die niet verwijderd zijn, in volgorde van aanmaken.
     public var visibleProfiles: [GameProfile] { gameProfiles.filter { $0.deletedAt == nil } }
 

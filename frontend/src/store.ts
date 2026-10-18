@@ -50,6 +50,16 @@ export const isOwner = (g: Game, me: string | null | undefined) => !g.ownerId ||
 /** Mag dit account punten boeken? De eigenaar altijd, deelnemers als dat aan staat. */
 export const canScore = (g: Game, me: string | null | undefined) => isOwner(g, me) || !!g.participantsCanScore;
 
+/**
+ * De bewaarde speler die jij bent: zelf gekozen, of anders de speler die aan
+ * jouw account gekoppeld is (bv. via "Dit ben ik" in een gedeeld spel).
+ */
+export function mySavedPlayer(st: Pick<AppState, 'savedPlayers' | 'myPlayerId'>, accountId: string | null | undefined) {
+  const saved = st.savedPlayers ?? [];
+  if (st.myPlayerId) return saved.find((sp) => sp.id === st.myPlayerId);
+  return accountId ? saved.find((sp) => sp.accountId === accountId) : undefined;
+}
+
 export const emptySync = (): SyncState => ({ cursor: null, dirtyGames: {}, dirtyProfiles: {}, accountNames: {} });
 
 export const markGame = (s: SyncState, id: string): SyncState => ({
@@ -362,6 +372,8 @@ export function useAppState() {
       }),
 
     setKeepAwake: (on: boolean) => setSt((s) => ({ ...s, keepAwake: on })),
+
+    setMyPlayer: (savedPlayerId: string | null) => setSt((s) => ({ ...s, myPlayerId: savedPlayerId })),
 
     /** Eigenaar: mogen alle (gekoppelde) spelers scores invoeren? */
     setParticipantsCanScore: (gameId: string, on: boolean) =>

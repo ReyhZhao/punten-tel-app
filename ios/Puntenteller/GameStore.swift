@@ -58,6 +58,11 @@ final class GameStore {
         save()
     }
 
+    /// De bewaarde speler die jij bent; `id` komt uit `Preferences.myPlayerId`.
+    func mySavedPlayer(id: String, accountId: String?) -> SavedPlayer? {
+        data.mySavedPlayer(id: UUID(uuidString: id), accountId: accountId)
+    }
+
     func savedPlayer(named name: String) -> SavedPlayer? {
         data.savedPlayers.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
     }

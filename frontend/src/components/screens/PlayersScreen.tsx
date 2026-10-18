@@ -8,12 +8,13 @@ interface Props {
   actions: Actions;
   savedPlayers: SavedPlayer[];
   gameProfiles: GameProfile[];
+  me?: SavedPlayer;
 }
 
 // 'total' = alle spellen samen, anders een profiel-id.
 type Scope = 'total' | string;
 
-export default function PlayersScreen({ theme, actions, savedPlayers, gameProfiles }: Props) {
+export default function PlayersScreen({ theme, actions, savedPlayers, gameProfiles, me }: Props) {
   const t = theme;
   const [scope, setScope] = useState<Scope>('total');
 
@@ -133,6 +134,28 @@ export default function PlayersScreen({ theme, actions, savedPlayers, gameProfil
           </div>
         ) : (
           <>
+            {/* Wie ben jij? Die speler staat daarna meteen in elk nieuw spel. */}
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 6 }}>
+              <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: t.muted, padding: '4px 4px 0' }}>
+                Wie ben jij?
+              </span>
+              <select
+                value={me?.id ?? ''}
+                onChange={(e) => actions.setMyPlayer(e.target.value || null)}
+                style={{
+                  height: 48, borderRadius: 14, border: `1px solid ${t.border}`, background: t.surface, color: t.text,
+                  padding: '0 12px', fontSize: 16, width: '100%',
+                }}
+              >
+                <option value="">Niet ingesteld</option>
+                {[...savedPlayers].sort((a, b) => a.name.localeCompare(b.name, 'nl')).map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <span style={{ fontSize: 13, color: t.muted, padding: '0 4px', lineHeight: 1.4 }}>
+                Deze speler staat automatisch in elk nieuw spel.
+              </span>
+            </label>
             <div
               style={{
                 fontSize: 12.5,
@@ -212,6 +235,9 @@ export default function PlayersScreen({ theme, actions, savedPlayers, gameProfil
                     >
                       {p.name}
                     </div>
+                    {me?.id === p.id && (
+                      <div style={{ fontSize: 12, fontWeight: 600, color: t.muted }}>Jij</div>
+                    )}
                   </div>
 
                   {/* Wins badge */}

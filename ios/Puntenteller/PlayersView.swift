@@ -5,6 +5,8 @@ import PuntentellerKit
 /// (zie `screens/PlayersScreen.tsx`).
 struct PlayersView: View {
     @Environment(GameStore.self) private var store
+    @Environment(SyncEngine.self) private var sync
+    @AppStorage(Preferences.myPlayerId) private var myPlayerId = ""
     @Environment(\.dismiss) private var dismiss
     /// nil = totaal over alle spellen.
     @State private var profileId: UUID?
@@ -12,6 +14,7 @@ struct PlayersView: View {
     var body: some View {
         let board = store.leaderboard(profileId: profileId)
         let topWins = board.first?.wins ?? 0
+        let me = store.mySavedPlayer(id: myPlayerId, accountId: sync.accountId)
 
         VStack(spacing: 0) {
             ZStack {
@@ -52,10 +55,12 @@ struct PlayersView: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 9) {
+                        mePicker(me)
                         SectionLabel("\(board.count) \(board.count == 1 ? "speler" : "spelers")")
                             .padding(.leading, 4)
                         ForEach(Array(board.enumerated()), id: \.element.player.id) { i, entry in
-                            row(rank: i + 1, entry.player, wins: entry.wins, isLeader: entry.wins > 0 && entry.wins == topWins)
+                            row(rank: i + 1, entry.player, wins: entry.wins, isLeader: entry.wins > 0 && entry.wins == topWins,
+                                isMe: entry.player.id == me?.id)
                         }
                     }
                     .padding(.horizontal, 20)
@@ -82,7 +87,44 @@ struct PlayersView: View {
         .buttonStyle(.plain)
     }
 
-    private func row(rank: Int, _ player: SavedPlayer, wins: Int, isLeader: Bool) -> some View {
+    /// Wie ben jij? Die speler staat daarna meteen in elk nieuw spel.
+    private func mePicker(_ me: SavedPlayer?) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            SectionLabel("Wie ben jij?")
+                .padding(.leading, 4)
+            Menu {
+                Picker("Wie ben jij?", selection: Binding(
+                    get: { me?.id.uuidString ?? "" },
+                    set: { myPlayerId = $0 }
+                )) {
+                    Text("Niet ingesteld").tag("")
+                    ForEach(store.savedPlayers.sorted { $0.name.localizedCompare($1.name) == .orderedAscending }) {
+                        Text($0.name).tag($0.id.uuidString)
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(me?.name ?? "Niet ingesteld")
+                        .font(Theme.display(17))
+                        .foregroundStyle(me == nil ? Theme.muted : Theme.text)
+                    Spacer()
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.muted)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .card(radius: Theme.Radius.row)
+            }
+            Text("Deze speler staat automatisch in elk nieuw spel.")
+                .font(.footnote)
+                .foregroundStyle(Theme.muted)
+                .padding(.horizontal, 4)
+        }
+        .padding(.bottom, 8)
+    }
+
+    private func row(rank: Int, _ player: SavedPlayer, wins: Int, isLeader: Bool, isMe: Bool) -> some View {
         HStack(spacing: 12) {
             Text("\(rank)")
                 .font(Theme.display(15))
@@ -100,9 +142,16 @@ struct PlayersView: View {
                             .offset(x: 5, y: -5)
                     }
                 }
-            Text(player.name)
-                .font(Theme.display(17))
-                .foregroundStyle(Theme.text)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(player.name)
+                    .font(Theme.display(17))
+                    .foregroundStyle(Theme.text)
+                if isMe {
+                    Text("Jij")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.muted)
+                }
+            }
             Spacer()
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("\(wins)")
@@ -124,4 +173,5 @@ struct PlayersView: View {
 #Preview {
     NavigationStack { PlayersView() }
         .environment(GameStore.preview)
+        .environment(SyncEngine(store: GameStore.preview))
 }

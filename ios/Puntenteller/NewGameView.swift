@@ -9,6 +9,7 @@ struct NewGameView: View {
     @Environment(GameStore.self) private var store
     @Environment(SyncEngine.self) private var sync
     @Environment(\.dismiss) private var dismiss
+    @AppStorage(Preferences.myPlayerId) private var myPlayerId = ""
 
     private static let maxPlayers = 8
 
@@ -33,6 +34,16 @@ struct NewGameView: View {
     @FocusState private var draftFocused: Bool
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
+
+    /// De bewaarde speler die jij bent; staat meteen in het nieuwe spel.
+    private var me: SavedPlayer? { store.mySavedPlayer(id: myPlayerId, accountId: sync.accountId) }
+
+    private func isMe(_ name: String) -> Bool { me.map { $0.name.caseInsensitiveCompare(name) == .orderedSame } ?? false }
+
+    /// Je eigen speler telt niet als uitgenodigd.
+    private var anyInvited: Bool {
+        sync.isSignedIn && players.contains { $0.accountId != nil && $0.accountId != sync.accountId }
+    }
 
     private var canStart: Bool { !trimmedName.isEmpty && players.count >= 2 }
 
@@ -98,7 +109,7 @@ struct NewGameView: View {
                     maxRoundsSection
                     sortSection
                     playersSection
-                    if sync.isSignedIn && players.contains(where: { $0.accountId != nil }) {
+                    if anyInvited {
                         ToggleRow(
                             title: "Deelnemers mogen scores bijhouden",
                             subtitle: "Uitgenodigde spelers kunnen dan ook punten boeken",
@@ -133,6 +144,9 @@ struct NewGameView: View {
                         .foregroundStyle(Theme.muted)
                 }
             }
+        }
+        .onAppear {
+            if players.isEmpty, let me { addPlayer(me.name, focus: false) }
         }
         .onChange(of: name) { _, new in
             // Zelf typen maakt het gekozen profiel los, zoals in de PWA.
@@ -352,14 +366,18 @@ struct NewGameView: View {
                         Text(player.name)
                             .font(Theme.display(17))
                             .foregroundStyle(Theme.text)
-                        if player.accountId != nil {
+                        if isMe(player.name) {
+                            Text("Jij")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Theme.muted)
+                        } else if player.accountId != nil {
                             Text("Uitgenodigd")
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(Theme.positive)
                         }
                     }
                     Spacer()
-                    if sync.isSignedIn {
+                    if sync.isSignedIn && !isMe(player.name) {
                         Button { invitingIndex = i } label: {
                             Image(systemName: player.accountId != nil ? "person.crop.circle.badge.checkmark" : "envelope")
                                 .foregroundStyle(player.accountId != nil ? Theme.positive : Theme.muted)
@@ -453,15 +471,18 @@ struct NewGameView: View {
         nameFocused = false
     }
 
-    private func addPlayer(_ raw: String) {
+    private func addPlayer(_ raw: String, focus: Bool = true) {
         let name = raw.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty, players.count < Self.maxPlayers else { return }
-        // Eerder uitgenodigd? Dan direct weer met dat account (alleen met een account).
-        let accountId = sync.isSignedIn ? store.savedPlayer(named: name)?.accountId : nil
+        // Eerder uitgenodigd? Dan direct weer met dat account (alleen met een
+        // account). Jij krijgt je eigen account.
+        let accountId = sync.isSignedIn
+            ? (isMe(name) ? sync.accountId : store.savedPlayer(named: name)?.accountId)
+            : nil
         players.append(NewPlayer(name: name, accountId: accountId))
         draft = ""
         // Toetsenbord open laten zodat je snel de volgende speler typt.
-        draftFocused = players.count < Self.maxPlayers
+        if focus { draftFocused = players.count < Self.maxPlayers }
     }
 
     private func start() {
@@ -469,7 +490,7 @@ struct NewGameView: View {
         // Koppel aan het gekozen profiel, of aan een profiel met dezelfde naam
         // (voor de winst-statistiek per speltype), zoals de PWA.
         let profileId = activeProfile?.id ?? store.profile(named: trimmedName)?.id
-        let invited = sync.isSignedIn && players.contains { $0.accountId != nil }
+        let invited = anyInvited
         onStart(store.startGame(
             name: trimmedName, rules: rules,
             players: sync.isSignedIn ? players : players.map { NewPlayer(name: $0.name) },

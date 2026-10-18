@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAppState } from './store';
+import { mySavedPlayer, useAppState } from './store';
 import { SyncContext, useSync } from './useSync';
 import { useWakeLock } from './hooks/useWakeLock';
 import { isStandalone, hintSeen, markHintSeen } from './pwa';
@@ -21,6 +21,7 @@ export default function App() {
   // Verwijderde spellen blijven als tombstone bewaard (voor de sync), maar niet zichtbaar.
   const games = st.games.filter((g) => !g.deletedAt);
   const current = games.find((g) => g.id === currentId);
+  const me = mySavedPlayer(st, sync.accountId);
 
   useWakeLock(!!st.keepAwake);
 
@@ -34,9 +35,9 @@ export default function App() {
 
   let content: React.ReactNode;
   if (screen === 'players') {
-    content = <PlayersScreen theme={theme} actions={actions} savedPlayers={st.savedPlayers ?? []} gameProfiles={st.gameProfiles ?? []} />;
+    content = <PlayersScreen theme={theme} actions={actions} savedPlayers={st.savedPlayers ?? []} gameProfiles={st.gameProfiles ?? []} me={me} />;
   } else if (screen === 'new') {
-    content = <NewGameScreen theme={theme} actions={actions} savedPlayers={st.savedPlayers ?? []} gameProfiles={st.gameProfiles ?? []} />;
+    content = <NewGameScreen theme={theme} actions={actions} savedPlayers={st.savedPlayers ?? []} gameProfiles={st.gameProfiles ?? []} me={me} />;
   } else if (screen === 'scoring' && current) {
     content = <ScoringScreen theme={theme} game={current} actions={actions} />;
   } else if (screen === 'winner' && current) {

@@ -35,6 +35,7 @@ in code gebruiken we de Engelse naam uit de tweede kolom.
 | **Deelnemer**     | gekoppelde `Player` | Uitgenodigd account; ziet het spel en de uitslag. |
 | **Deelnemers mogen scores bijhouden** | `participantsCanScore` | Instelling per spel: deelnemers mogen dan ook boeken. |
 | **Invoer op eigen speler** | `stayOnOwnPlayer` | Instelling per spel (naast *deelnemers mogen scores bijhouden*): na een boeking springt de invoer terug naar je eigen speler in plaats van naar de volgende. Voor als iedereen op de eigen telefoon boekt. |
+| **Jij** | `myPlayerId` | De bewaarde speler die jij bent, gekozen bij Spelers (per toestel; anders de speler die aan je account gekoppeld is). Staat automatisch in elk nieuw spel, met een account gekoppeld aan jou. |
 | **Spel verlaten** | `leave`      | Een deelnemer haalt zichzelf uit een gedeeld spel. |
 | **Eigenaar overdragen** | `transfer` | De eigenaar maakt een uitgenodigde speler eigenaar; zelf blijft hij meespelen. |
 | **Pushmelding**  | `PushDevice` | Melding op je iPhone als je wordt uitgenodigd, een spel afloopt of aan jou wordt overgedragen. |

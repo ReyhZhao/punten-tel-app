@@ -3,6 +3,8 @@ import SwiftUI
 /// Voorkeuren op dit toestel (zie `SettingsSheet.tsx`). Worden niet gesynct.
 enum Preferences {
     static let keepAwake = "keepAwake"
+    /// Id van de bewaarde speler die jij bent (leeg = niet ingesteld).
+    static let myPlayerId = "myPlayerId"
 }
 
 /// Instellingen: scherm aan houden en importeren uit de web-app.

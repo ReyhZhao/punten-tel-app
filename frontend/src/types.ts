@@ -121,6 +121,8 @@ export interface AppState {
   screen: Screen;
   currentId: string | null;
   keepAwake: boolean;
+  /** Bewaarde speler die jij bent; komt automatisch in elk nieuw spel. */
+  myPlayerId?: string | null;
   sync: SyncState;
 }
 
@@ -153,6 +155,8 @@ export interface Actions {
   deleteGame: (gameId: string) => void;
   saveProfile: (profile: GameProfile) => void;
   setKeepAwake: (on: boolean) => void;
+  /** Kies welke bewaarde speler jij bent (null = niemand). */
+  setMyPlayer: (savedPlayerId: string | null) => void;
   /** Onthoud het account bij een bewaarde speler (na opzoeken op e-mail). */
   rememberAccount: (playerName: string, accountId: string | null) => void;
   setParticipantsCanScore: (gameId: string, on: boolean) => void;

@@ -26,6 +26,16 @@ import Testing
         #expect(data.visibleGames.map(\.id) == [a.id, b.id])
     }
 
+    @Test func mySavedPlayerPrefersChoiceThenAccount() {
+        var data = AppData()
+        data.startGame(name: "A", rules: GameRules(), players: [NewPlayer(name: "Anna"), NewPlayer(name: "Bram", accountId: "acc-b")])
+        let anna = data.savedPlayers[0]
+        #expect(data.mySavedPlayer(id: anna.id, accountId: "ACC-B")?.name == "Anna")
+        #expect(data.mySavedPlayer(id: nil, accountId: "ACC-B")?.name == "Bram")
+        #expect(data.mySavedPlayer(id: nil, accountId: nil) == nil)
+        #expect(data.mySavedPlayer(id: UUID(), accountId: "acc-b") == nil)
+    }
+
     @Test func decodesFileWithMissingKeys() throws {
         let data = try JSONDecoder.puntenteller.decode(AppData.self, from: Data(#"{"games":[]}"#.utf8))
         #expect(data.savedPlayers.isEmpty && data.gameProfiles.isEmpty)
