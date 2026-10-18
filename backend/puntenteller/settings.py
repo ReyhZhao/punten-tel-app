@@ -100,6 +100,8 @@ else:
     }
 
 AUTH_USER_MODEL = "accounts.User"
+# Alleen /admin/ logt in met een wachtwoord; met lockout na te veel fouten.
+AUTHENTICATION_BACKENDS = ["accounts.backends.LockoutModelBackend"]
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 LANGUAGE_CODE = "nl"
@@ -116,9 +118,18 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
-# Cache voor rate limiting. Lokaal in het geheugen; met meerdere replicas
-# moet dit een gedeelde cache worden (bv. Redis), zie README.
-CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+# Cache voor rate limiting, code-limieten en de Polaris-tellers. In de database,
+# zodat alle uvicorn-workers (en replicas) dezelfde tellers zien en een herstart
+# ze niet wist. De tabel maakt migratie accounts.0003 aan; zie puntenteller/cache.py.
+CACHES = {
+    "default": {
+        "BACKEND": "puntenteller.cache.DatabaseCache",  # incr behoudt de verlooptijd
+        "LOCATION": "django_cache",
+        # Ruim boven het aantal tellers (per IP, account en adres), anders gooit
+        # het opruimen lopende limieten weg.
+        "OPTIONS": {"MAX_ENTRIES": 50_000},
+    }
+}
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["accounts.authentication.BearerTokenAuthentication"],
@@ -128,7 +139,15 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "lookup": env("THROTTLE_LOOKUP", "30/hour"),
         "auth": env("THROTTLE_AUTH", "20/hour"),
+        # Per gebruiker. De app synct hooguit eens per 2 s plus na elk realtime-seintje.
+        "sync": env("THROTTLE_SYNC", "3600/hour"),
+        "invite": env("THROTTLE_INVITE", "30/hour"),
+        "push": env("THROTTLE_PUSH", "30/hour"),
     },
+    # Het client-IP is REMOTE_ADDR, dat uvicorn (--proxy-headers) al uit
+    # X-Forwarded-For haalt. Zonder dit gebruikt DRF de hele, door de client
+    # aan te vullen X-Forwarded-For als sleutel en is elke throttle te omzeilen.
+    "NUM_PROXIES": 0,
     "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
     "UNAUTHENTICATED_USER": None,
 }
@@ -158,11 +177,18 @@ LOGIN_CODE_TTL_MINUTES = int(env("LOGIN_CODE_TTL_MINUTES", "15"))
 LOGIN_CODE_MAX_ATTEMPTS = 5
 INVITE_CODE_TTL_MINUTES = int(env("INVITE_CODE_TTL_MINUTES", "10"))
 
+# Mislukte /admin/-logins per gebruikersnaam of IP voordat het inloggen voor de
+# rest van het venster dichtgaat.
+ADMIN_LOGIN_MAX_FAILURES = 10
+ADMIN_LOGIN_LOCKOUT_SECONDS = 15 * 60
+
 # Account voor Apple's app-review: reviewers kunnen geen e-mail ontvangen, dus
 # voor dit ene adres geldt een vaste code (uit Vault) en wordt niets gemaild.
 # Leeg = uit.
 REVIEW_ACCOUNT_EMAIL = (env("REVIEW_ACCOUNT_EMAIL", "") or "").strip().lower()
 REVIEW_ACCOUNT_CODE = (env("REVIEW_ACCOUNT_CODE", "") or "").strip()
+# De vaste code kent geen pogingen per code; daarom zo vaak fout per uur, daarna dicht.
+REVIEW_ACCOUNT_MAX_FAILURES = 10
 
 # Beveiligingsmeldingen naar Polaris Security (SOC), zie polaris/client.py en
 # POLARIS_INTEGRATION.md. De URL's zijn geheim (Vault); leeg = dat deel staat uit.
@@ -173,6 +199,9 @@ POLARIS_ENVIRONMENT = env("POLARIS_ENVIRONMENT", "development" if DEBUG else "pr
 POLARIS_HOST_NAME = env("POLARIS_HOST_NAME", "")
 POLARIS_HOST_IP = env("POLARIS_HOST_IP", "")
 POLARIS_ASYNC = True  # in een achtergrond-thread versturen (tests: zelf flushen)
+# Wie een e-mail krijgt als Polaris de ingest-URL weigert of al een tijd
+# onbereikbaar is (de SOC ziet dan zelf niets). Leeg = alleen in de log.
+POLARIS_OPS_EMAIL = (env("POLARIS_OPS_EMAIL", "") or "").strip()
 APP_VERSION = env("APP_VERSION", "")
 
 # Achter een reverse proxy (ingress) die TLS afhandelt.

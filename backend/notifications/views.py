@@ -3,7 +3,12 @@ from rest_framework import serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from polaris.throttling import ReportingScopedRateThrottle
+
 from .models import PushDevice
+
+# Meer toestellen per account is geen echt gebruik; de oudste vallen af.
+MAX_DEVICES_PER_USER = 20
 
 
 class DeviceSerializer(serializers.Serializer):
@@ -13,6 +18,9 @@ class DeviceSerializer(serializers.Serializer):
 
 class DevicesView(APIView):
     """Toestel aanmelden voor pushmeldingen (of het token bijwerken)."""
+
+    throttle_classes = [ReportingScopedRateThrottle]
+    throttle_scope = "push"
 
     def post(self, request):
         data = DeviceSerializer(data=request.data)
@@ -25,6 +33,8 @@ class DevicesView(APIView):
                 "environment": data.validated_data["environment"],
             },
         )
+        keep = PushDevice.objects.filter(user=request.user).order_by("-updated_at")[:MAX_DEVICES_PER_USER]
+        PushDevice.objects.filter(user=request.user).exclude(pk__in=list(keep.values_list("pk", flat=True))).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

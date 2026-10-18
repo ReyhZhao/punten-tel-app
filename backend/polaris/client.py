@@ -12,6 +12,10 @@ buffer in het geheugen; een achtergrond-thread stuurt ze elke paar seconden
 in batches. Polaris dropt dubbele `event_id`'s, dus een batch na een timeout
 opnieuw sturen is veilig. De buffer is wel vluchtig: bij een herstart gaat
 wat nog niet verstuurd was verloren.
+
+Gaat het versturen mis, dan ziet de SOC niets: Polaris merkt niet dat een
+bron stil valt. Daarom krijgt POLARIS_OPS_EMAIL een mail als Polaris de URL
+weigert of al een half uur onbereikbaar is (hooguit eens per dag per soort).
 """
 
 import ipaddress
@@ -27,6 +31,7 @@ from urllib.parse import urlsplit
 
 import httpx
 from django.conf import settings
+from django.core.mail import send_mail
 from django.db import close_old_connections
 
 log = logging.getLogger(__name__)
@@ -39,6 +44,8 @@ FLUSH_INTERVAL = 5.0  # seconden
 FLUSH_AT = 100  # eerder versturen bij zoveel wachtende events
 MAX_BACKOFF = 300.0
 SNAPSHOT_INTERVAL = 24 * 3600  # volledige asset-snapshot
+OPS_UNREACHABLE_AFTER = 30 * 60  # seconden zonder geslaagde aflevering
+OPS_MAIL_INTERVAL = 24 * 3600  # hooguit eens per dag per soort mail
 
 # Tests zetten hier een httpx.MockTransport.
 TRANSPORT = None
@@ -127,6 +134,8 @@ class Sender:
         self._send_lock = threading.Lock()
         self._failures = 0
         self._retry_at = 0.0
+        self._failing_since: float | None = None
+        self._ops_mailed: dict[str, float] = {}
         self._client = httpx.Client(
             timeout=httpx.Timeout(15.0, connect=5.0), transport=TRANSPORT, follow_redirects=False
         )
@@ -173,9 +182,19 @@ class Sender:
                 self._retry_at = time.monotonic() + delay
                 log.warning("Polaris (%s): %d item(s) blijven in de buffer, nieuwe poging over %.0f s",
                             self.label, len(retry), delay)
+                if self._failing_since is None:
+                    self._failing_since = time.monotonic()
+                elif time.monotonic() - self._failing_since >= OPS_UNREACHABLE_AFTER:
+                    self.notify_ops(
+                        "unreachable",
+                        f"Polaris ({self.label}) is al {int((time.monotonic() - self._failing_since) // 60)} "
+                        f"minuten onbereikbaar (time-out, 429 of 5xx). {len(retry)} item(s) wachten in de buffer "
+                        f"en gaan verloren bij een herstart. Beveiligingsmeldingen komen nu niet bij de SOC aan.",
+                    )
                 return False
             self._failures = 0
             self._retry_at = 0.0
+            self._failing_since = None
             return True
 
     def deliver(self, items: list[dict]) -> list[dict]:
@@ -207,7 +226,32 @@ class Sender:
             "Polaris ingest URL rejected the batch (HTTP %d) for %s: %d item(s) dropped. "
             "Check POLARIS_*_INGEST_URL.", r.status_code, self.label, len(items),
         )
+        self.notify_ops(
+            f"rejected-{r.status_code}",
+            f"Polaris weigerde een batch op de ingest-URL ({self.label}) met HTTP {r.status_code}; "
+            f"{len(items)} item(s) zijn weggegooid. Bij 404 is de URL onbekend, ingetrokken of gepauzeerd: "
+            f"controleer POLARIS_*_INGEST_URL in Vault (kv/puntenteller). Tot dat is opgelost, komen "
+            f"beveiligingsmeldingen niet bij de SOC aan.",
+        )
         return []
+
+    def notify_ops(self, kind: str, message: str) -> None:
+        """Mail naar POLARIS_OPS_EMAIL, hooguit eens per OPS_MAIL_INTERVAL per soort."""
+        if not settings.POLARIS_OPS_EMAIL:
+            return
+        now = time.monotonic()
+        if now - self._ops_mailed.get(kind, -OPS_MAIL_INTERVAL) < OPS_MAIL_INTERVAL:
+            return
+        self._ops_mailed[kind] = now
+        try:
+            send_mail(
+                f"[Puntenteller] Polaris-koppeling: {'URL geweigerd' if kind.startswith('rejected') else 'onbereikbaar'}",
+                f"{message}\n\nOmgeving: {settings.POLARIS_ENVIRONMENT}, host: {settings.POLARIS_HOST_NAME or '-'}.",
+                None,
+                [settings.POLARIS_OPS_EMAIL],
+            )
+        except Exception:
+            log.exception("Polaris (%s): mail naar POLARIS_OPS_EMAIL mislukt", self.label)
 
     def _split(self, items: list[dict]) -> list[dict]:
         mid = len(items) // 2

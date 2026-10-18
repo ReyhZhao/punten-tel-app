@@ -21,8 +21,9 @@ api:
     repository: registry.vels.online/punten/api
     tag: v0.5.0
     pullPolicy: Always
-  # Eén replica: de rate limiting gebruikt een cache in het geheugen van de pod.
-  # Opschalen vraagt om een gedeelde cache (bv. Redis), zie backend/README.md.
+  # Eén replica: de migraties draaien als initContainer en mogen niet dubbel
+  # draaien. De rate limiting gebruikt een cache in PostgreSQL en werkt dus wel
+  # over workers en replicas heen, zie backend/README.md ("Opschalen").
   replicas: 1
   # Secret met DJANGO_SECRET_KEY en EMAIL_HOST_PASSWORD, aangemaakt door de
   # ExternalSecret (templates/external-secret.yaml) uit Vault (kv/puntenteller).
@@ -54,6 +55,9 @@ api:
     enabled: true
     environment: "production"
     secretName: backend-polaris-secret
+    # Krijgt een mail als Polaris de ingest-URL weigert of een half uur
+    # onbereikbaar is: de SOC merkt dan zelf niet dat er niets binnenkomt.
+    opsEmail: "eddie@vels.online"
 # PostgreSQL via CloudNativePG (de operator moet in het cluster draaien).
 # De backend leest host, poort, database, gebruiker en wachtwoord uit de
 # Secret "<clusterName>-app" die CNPG aanmaakt.

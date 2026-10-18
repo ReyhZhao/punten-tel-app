@@ -141,6 +141,48 @@ class TransportTests(PolarisTestCase):
             self.assertIn("…a1e7", logs.output[0])
             self.assertNotIn("00000000-0000", logs.output[0])
 
+    @override_settings(POLARIS_OPS_EMAIL="ops@example.com")
+    def test_rejection_mails_the_operator_once(self):
+        self.status = 404
+        for _ in range(3):
+            self.queue(1)
+            with self.assertLogs("polaris.client", "ERROR"):
+                client.flush_all(force=True)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["ops@example.com"])
+        self.assertIn("HTTP 404", mail.outbox[0].body)
+        self.assertIn("…a1e7", mail.outbox[0].body)
+        self.assertNotIn("00000000-0000", mail.outbox[0].body)
+
+    @override_settings(POLARIS_OPS_EMAIL="ops@example.com")
+    def test_long_outage_mails_the_operator(self):
+        self.status = 503
+        s = self.queue(1)
+        clock = [1000.0]
+        with mock.patch.object(client.time, "monotonic", lambda: clock[0]):
+            s.flush(force=True)
+            clock[0] += client.OPS_UNREACHABLE_AFTER - 1
+            s.flush(force=True)
+            self.assertEqual(mail.outbox, [], "nog geen half uur")
+            clock[0] += 2
+            s.flush(force=True)
+            self.assertEqual(len(mail.outbox), 1)
+            self.assertIn("onbereikbaar", mail.outbox[0].subject)
+            self.status = 202
+            self.assertTrue(s.flush(force=True))
+            self.status = 503
+            s.enqueue({"event_id": "x", "severity": "low"})
+            clock[0] += 1
+            s.flush(force=True)
+        self.assertEqual(len(mail.outbox), 1, "na herstel begint de klok opnieuw")
+
+    def test_no_operator_mail_without_address(self):
+        self.status = 404
+        self.queue(1)
+        with self.assertLogs("polaris.client", "ERROR"):
+            client.flush_all(force=True)
+        self.assertEqual(mail.outbox, [])
+
     def test_413_splits_the_batch(self):
         s = self.queue(4)
         calls = []
@@ -245,6 +287,28 @@ class LoginDetectionTests(PolarisTestCase):
             self.request_code("jdoe@example.com", "Jan")
         self.assertEqual(self.rule_ids(), ["puntenteller-api.auth.code-request-limit"])
 
+    def test_login_code_volume_across_addresses(self):
+        for i in range(50):
+            # Elk adres vanaf een eigen IP, zodat de throttle per IP niet ingrijpt.
+            self.api.post("/api/v1/auth/request-code", {"email": f"victim{i}@example.com", "displayName": "X"},
+                          format="json", REMOTE_ADDR=f"198.51.100.{i}")
+        events = self.sent()
+        self.assertEqual([e["rule"]["id"] for e in events], ["puntenteller-api.abuse.login-code-volume"])
+        self.assertEqual(events[0]["context"]["codes_sent"], 50)
+        self.assertEqual(events[0]["context"]["new_accounts"], 50)
+
+    def test_unknown_addresses_on_the_login_form(self):
+        for i in range(10):
+            self.assertEqual(self.request_code(f"guess{i}@example.com").status_code, 404)
+        events = self.sent()
+        self.assertEqual([e["rule"]["id"] for e in events], ["puntenteller-api.account.login-enumeration"])
+        self.assertNotIn("guess", json.dumps(events))
+
+    def test_same_unknown_address_repeated_is_not_enumeration(self):
+        for _ in range(12):
+            self.request_code("typo@example.com")
+        self.assertEqual(self.sent(), [])
+
     @mock.patch.object(ReportingScopedRateThrottle, "THROTTLE_RATES", {"auth": "2/hour", "lookup": "30/hour"})
     def test_repeated_throttling(self):
         for _ in range(7):
@@ -288,21 +352,32 @@ class GameDetectionTests(PolarisTestCase, SyncTestCase):
     "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 })
 class AdminDetectionTests(PolarisTestCase):
-    def test_admin_brute_force_and_login_after_it(self):
+    def login(self, password, ip="203.0.113.7"):
+        self.client.post("/admin/login/", {"username": "root@example.com", "password": password}, REMOTE_ADDR=ip)
+        return "_auth_user_id" in self.client.session
+
+    def test_admin_brute_force_alerts_and_locks_the_login(self):
         User.objects.create_superuser("root@example.com", "correct horse")
         self.forget()
-        web = self.client
         for _ in range(10):
-            web.post("/admin/login/", {"username": "root@example.com", "password": "wrong"}, REMOTE_ADDR="203.0.113.7")
-        web.post("/admin/login/", {"username": "root@example.com", "password": "correct horse"}, REMOTE_ADDR="203.0.113.7")
+            self.assertFalse(self.login("wrong"))
+        self.assertFalse(self.login("correct horse"), "dicht, ook met het goede wachtwoord")
+        self.assertFalse(self.login("correct horse", ip="198.51.100.1"), "per gebruikersnaam, ook vanaf een ander IP")
         events = self.sent()
         self.assertEqual(sorted(e["rule"]["id"] for e in events), [
-            "puntenteller-api.admin.login-after-failures",
             "puntenteller-api.admin.login-bruteforce",  # per gebruikersnaam
             "puntenteller-api.admin.login-bruteforce",  # per IP
         ])
         self.assertNotIn("wrong", json.dumps(events))
         self.assertNotIn("correct horse", json.dumps(events))
+
+    def test_admin_login_after_failures_below_the_lockout(self):
+        User.objects.create_superuser("root@example.com", "correct horse")
+        self.forget()
+        for _ in range(5):
+            self.login("wrong")
+        self.assertTrue(self.login("correct horse"))
+        self.assertEqual(self.rule_ids(), ["puntenteller-api.admin.login-after-failures"])
 
 
 @override_settings(**SETTINGS)

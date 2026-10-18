@@ -170,9 +170,12 @@ de Secret klaar heeft, wacht de pod vanzelf.
 | `DEFAULT_FROM_EMAIL` | `Puntenteller <noreply@vels.online>` | |
 | `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`, `APNS_TOPIC` | `—, —, —, online.vels.puntenteller` | pushmeldingen; zonder sleutel uit |
 | `THROTTLE_AUTH`, `THROTTLE_LOOKUP` | `20/hour`, `30/hour` | per IP resp. per gebruiker |
+| `THROTTLE_SYNC`, `THROTTLE_INVITE`, `THROTTLE_PUSH` | `3600/hour`, `30/hour`, `30/hour` | per gebruiker |
+| `FORWARDED_ALLOW_IPS` | privé-adressen (zie Dockerfile) | proxies waarvan uvicorn `X-Forwarded-For` vertrouwt |
 | `POLARIS_ALERT_INGEST_URL`, `POLARIS_ASSET_INGEST_URL` | — | geheim (Vault); leeg = uit. Zie Polaris hieronder |
 | `POLARIS_HOST_NAME`, `POLARIS_HOST_IP` | — | in de chart: de node (downward API) |
 | `POLARIS_ENVIRONMENT`, `APP_VERSION` | `production` (`development` met debug), — | in de chart: `api.polaris.environment` en de image-tag |
+| `POLARIS_OPS_EMAIL` | — | mail bij een geweigerde of langdurig onbereikbare Polaris; in de chart `api.polaris.opsEmail` |
 
 ### Pushmeldingen
 
@@ -212,6 +215,23 @@ node en de beheerders. Detecties, mapping en testprocedure staan in
 - Eenmalig: `vault kv patch kv/puntenteller POLARIS_ALERT_INGEST_URL='…' POLARIS_ASSET_INGEST_URL='…'`
 - Testen: `python manage.py polaris_test_events` (één test-alert per
   detectie) en in de pod `python manage.py polaris_sync_assets`.
+- Weigert Polaris de URL (400/404) of is hij een half uur onbereikbaar, dan
+  krijgt `POLARIS_OPS_EMAIL` een mail (hooguit eens per dag per soort).
+
+### Misbruik beperken
+
+- **Client-IP:** uvicorn vertrouwt `X-Forwarded-For` alleen van proxies met een
+  privé-adres (`FORWARDED_ALLOW_IPS`) en neemt het eerste adres van rechts
+  daarbuiten. DRF gebruikt dat (`NUM_PROXIES = 0`), nooit de header zelf.
+- **Limieten:** per IP op inloggen (`auth`), per gebruiker op zoeken, sync,
+  uitnodigcodes en pushtoestellen; 5 codes per adres per uur, 5 pogingen per
+  code; het review-account gaat na 10 fouten een uur dicht; `/admin/` na 10
+  fouten per gebruikersnaam of IP voor 15 minuten. Hooguit 20 pushtoestellen
+  per account.
+- **Gedeelde cache:** de tellers staan in PostgreSQL (tabel `django_cache`,
+  aangemaakt door migratie `accounts.0003`), zodat ze voor beide workers
+  gelden en een herstart overleven. `puntenteller/cache.py` zorgt dat `incr`
+  de verlooptijd van een teller niet verlengt.
 
 ### Realtime (SSE)
 
@@ -224,7 +244,7 @@ en metingen: `docs/research/sse-realtime-updates.md`.
 
 ### Opschalen
 
-Rate limiting en code-limieten gebruiken een cache in het geheugen. Bij meer
-dan één replica moet die gedeeld worden (Redis via `CACHES`), en moeten
-migraties naar een aparte Job, zodat ze niet dubbel draaien. Realtime werkt
+Rate limiting, code-limieten en de Polaris-tellers gebruiken een cache in
+PostgreSQL en werken dus al over workers en replicas heen. Bij meer dan één
+replica moeten de migraties naar een aparte Job, zodat ze niet dubbel draaien. Realtime werkt
 over replicas heen vanzelf (via PostgreSQL `NOTIFY`).

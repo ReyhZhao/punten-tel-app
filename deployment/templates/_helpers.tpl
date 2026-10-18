@@ -60,6 +60,8 @@ De databasegegevens komen uit de Secret die CloudNativePG aanmaakt:
 {{- if .enabled }}
 - name: POLARIS_ENVIRONMENT
   value: {{ .environment | quote }}
+- name: POLARIS_OPS_EMAIL
+  value: {{ .opsEmail | default "" | quote }}
 # De node, niet de pod: podnamen wisselen bij elke uitrol (host.name in Polaris).
 - name: POLARIS_HOST_NAME
   valueFrom:

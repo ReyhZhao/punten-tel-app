@@ -16,6 +16,9 @@ User = get_user_model()
 
 
 class SyncView(APIView):
+    throttle_classes = [ReportingScopedRateThrottle]
+    throttle_scope = "sync"
+
     def post(self, request):
         data = SyncRequestSerializer(data=request.data)
         data.is_valid(raise_exception=True)

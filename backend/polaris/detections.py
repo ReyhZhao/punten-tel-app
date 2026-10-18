@@ -4,8 +4,8 @@ Welke beveiligingsgebeurtenissen we als alert naar Polaris sturen, en wanneer.
 Luidruchtige gebeurtenissen (foute codes, ongeldige tokens, throttles) tellen
 we eerst op in de cache, over een vast venster vanaf de eerste treffer. Pas
 bij een drempel gaat er één alert per (detectie, onderwerp) per venster uit.
-De cache staat per proces in het geheugen, net als de rate limiting (zie
-README, "Opschalen"). Met meer processen gelden de drempels dus per proces.
+De cache staat in de database (settings.CACHES), dus de drempels gelden voor
+alle processen samen, net als de rate limiting.
 
 `rule.id` en `rule.name` zijn per detectie vast. Wat per keer verschilt
 (adres, IP, aantallen), gaat in `title`, `description` en `context`. Codes,
@@ -63,7 +63,8 @@ CODE_REQUEST_LIMIT = Rule(
 RATE_LIMITED = Rule(
     f"{APP}.abuse.rate-limited", "Rate limit tripped repeatedly by one source", "low",
     threshold=5, window=3600,
-    when="≥ 5 throttled requests (login or account lookup throttle) from one IP within 60 min",
+    when="≥ 5 throttled requests (login, account lookup, sync, invite code or push device throttle) from one IP "
+         "within 60 min",
     guidance="Abuse signal for correlation. Players at one table share an IP, so a single alert is rarely actionable.",
 )
 LOOKUP_ENUMERATION = Rule(
@@ -89,7 +90,8 @@ ADMIN_LOGIN_BRUTEFORCE = Rule(
     f"{APP}.admin.login-bruteforce", "Brute force against the Django admin login", "high",
     threshold=10, window=900,
     when="≥ 10 failed /admin/ password logins for one username, or from one IP, within 15 min",
-    guidance="Admin accounts are the only password accounts. Block the source IP at the ingress if it persists.",
+    guidance="Admin accounts are the only password accounts. The admin login locks for that username or IP for the "
+             "rest of the 15 min window at the same count. Block the source IP at the ingress if it persists.",
 )
 ADMIN_LOGIN_AFTER_FAILURES = Rule(
     f"{APP}.admin.login-after-failures", "Admin login after repeated failed attempts", "high",
@@ -102,11 +104,25 @@ PRIVILEGE_GRANTED = Rule(
     when="An account gets is_staff or is_superuser (via /admin/, createsuperuser or the shell)",
     guidance="Verify the change with the app owner. Unexpected grants mean someone already has admin or database access.",
 )
+LOGIN_CODE_VOLUME = Rule(
+    f"{APP}.abuse.login-code-volume", "Unusual volume of login code e-mails", "medium",
+    threshold=50, window=3600,
+    when="≥ 50 login code e-mails sent within 60 min across all addresses (sign-ups and logins together)",
+    guidance="Normal use is a handful per hour. Check context.new_accounts and context.source_ips: many new unverified "
+             "accounts from few IPs means someone is using the sign-up form to mail-bomb addresses or fill the database.",
+)
+SIGNUP_ENUMERATION = Rule(
+    f"{APP}.account.login-enumeration", "Account enumeration through the login form", "medium",
+    threshold=10, window=3600,
+    when="≥ 10 different unknown e-mail addresses tried on the login form from one IP within 60 min",
+    guidance="Without a name the login form answers whether an address has an account. Someone is checking a list of "
+             "addresses against it. The per-IP throttle limits the pace.",
+)
 
 RULES = [
     LOGIN_CODE_BRUTEFORCE, LOGIN_FAILURES_FROM_IP, LOGIN_AFTER_FAILURES, CODE_REQUEST_LIMIT, RATE_LIMITED,
     LOOKUP_ENUMERATION, INVALID_TOKENS, ACCESS_DENIED, ADMIN_LOGIN_BRUTEFORCE, ADMIN_LOGIN_AFTER_FAILURES,
-    PRIVILEGE_GRANTED,
+    PRIVILEGE_GRANTED, LOGIN_CODE_VOLUME, SIGNUP_ENUMERATION,
 ]
 
 
@@ -234,6 +250,44 @@ def code_request_limited(request, email: str) -> None:
         )
 
 
+def login_code_sent(request, new_account: bool) -> None:
+    """Een inlogcode is gemaild. Telt over alle adressen samen."""
+    rule = LOGIN_CODE_VOLUME
+    ip = client_ip(request)
+    n = _hit(rule, "all")
+    new = _hit(rule, "new") if new_account else _count(rule, "new")
+    ips = _distinct(rule, "all", ip) if ip else []
+    if n >= rule.threshold and _once(rule, "all"):
+        report(
+            rule,
+            f"{n} login code e-mails sent in {_minutes(rule)} minutes",
+            f"The app e-mailed {n} login codes within {_minutes(rule)} minutes, {new} of them for new accounts, "
+            f"from {len(ips)} source IP(s) (latest {ip or 'unknown'}). Each address gets at most 5 codes per hour and "
+            f"each IP 20 login requests per hour.",
+            ip=ip,
+            context={"codes_sent": n, "new_accounts": new, "window_minutes": _minutes(rule), "source_ips": ips},
+        )
+
+
+def unknown_address(request, email: str) -> None:
+    """Het inlogformulier zonder naam voor een adres zonder account."""
+    ip = client_ip(request)
+    if not ip:
+        return
+    rule = SIGNUP_ENUMERATION
+    # Alleen een korte hash: de adressen zelf zijn meestal niet van onze gebruikers.
+    addresses = _distinct(rule, ip, hashlib.sha256(email.encode()).hexdigest()[:16])
+    if len(addresses) >= rule.threshold and _once(rule, ip):
+        report(
+            rule,
+            f"{len(addresses)} unknown e-mail addresses tried from {ip} in {_minutes(rule)} minutes",
+            f"{ip} asked for login codes for {len(addresses)} different e-mail addresses without an account within "
+            f"{_minutes(rule)} minutes. The login form told it each time that there is no account.",
+            ip=ip,
+            context={"unknown_addresses": len(addresses), "window_minutes": _minutes(rule)},
+        )
+
+
 def rate_limited(request, scope: str) -> None:
     ip = client_ip(request)
     if not ip:
@@ -329,7 +383,8 @@ def admin_login_failed(request, username: str) -> None:
                 f"in {_minutes(rule)} minutes",
                 f"The Django admin (/admin/) refused {n} password logins "
                 f"{'for ' + username if subject == 'user' else 'from ' + ip} within {_minutes(rule)} minutes. "
-                f"The admin login has no lockout.",
+                f"Further logins {'for this username' if subject == 'user' else 'from this IP'} are refused for the rest "
+                f"of the window, even with the right password.",
                 user=username or None, ip=ip,
                 context={"failed_attempts": n, "window_minutes": _minutes(rule), "counted_by": subject},
             )

@@ -73,6 +73,14 @@ class DeviceRegistrationTests(SyncTestCase):
         r = self.owner.client.post("/api/v1/push/devices", {"token": "geen-hex"}, format="json")
         self.assertEqual(r.status_code, 400)
 
+    def test_devices_per_user_are_capped(self):
+        for i in range(25):
+            self.owner.client.post("/api/v1/push/devices", {"token": f"{i:064x}"}, format="json")
+        tokens = set(PushDevice.objects.filter(user=self.anna).values_list("token", flat=True))
+        self.assertEqual(len(tokens), 20)
+        self.assertIn(f"{24:064x}", tokens)
+        self.assertNotIn(f"{0:064x}", tokens)
+
     def test_logout_removes_device(self):
         self.owner.client.post("/api/v1/push/devices", {"token": TOKEN_A}, format="json")
         self.owner.client.post("/api/v1/auth/logout")

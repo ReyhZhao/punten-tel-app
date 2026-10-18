@@ -153,7 +153,67 @@ class ReviewAccountTests(TestCase):
         r = self.client.post("/api/v1/auth/verify", {"email": "iemand@example.com", "code": "246810"}, format="json")
         self.assertEqual(r.status_code, 400)
 
+    def test_review_account_locks_after_too_many_failures(self):
+        self.client.post("/api/v1/auth/request-code", {"email": "review@vels.online"}, format="json")
+        for i in range(10):
+            # Elke poging vanaf een ander IP: de lockout geldt voor het account.
+            r = self.client.post("/api/v1/auth/verify", {"email": "review@vels.online", "code": f"{i:06d}"},
+                                 format="json", REMOTE_ADDR=f"198.51.100.{i}")
+            self.assertEqual(r.json()["code"], "invalid_code")
+        r = self.client.post("/api/v1/auth/verify", {"email": "review@vels.online", "code": "246810"}, format="json")
+        self.assertEqual(r.json()["code"], "too_many_attempts")
+
     @override_settings(REVIEW_ACCOUNT_CODE="")
     def test_disabled_without_code(self):
         r = self.client.post("/api/v1/auth/request-code", {"email": "review@vels.online"}, format="json")
         self.assertEqual(r.json()["code"], "account_not_found")
+
+
+class ThrottleTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def test_forwarded_for_cannot_dodge_the_ip_throttle(self):
+        # uvicorn zet REMOTE_ADDR al op het echte client-IP; een eigen
+        # X-Forwarded-For mag geen nieuwe throttle-teller opleveren.
+        api = APIClient(REMOTE_ADDR="203.0.113.5")
+        statuses = [
+            api.post("/api/v1/auth/verify", {"email": "a@example.com", "code": "123456"}, format="json",
+                     HTTP_X_FORWARDED_FOR=f"10.9.{i}.1").status_code
+            for i in range(21)
+        ]
+        self.assertNotIn(429, statuses[:20])
+        self.assertEqual(statuses[20], 429)
+
+    def test_invite_codes_are_throttled_per_user(self):
+        user = User.objects.create_user("anna@example.com", "Anna", is_verified=True)
+        _, key = AuthToken.create_for(user)
+        api = APIClient()
+        api.credentials(HTTP_AUTHORIZATION=f"Bearer {key}")
+        statuses = [api.post("/api/v1/me/invite-code").status_code for _ in range(31)]
+        self.assertEqual(statuses[:30], [201] * 30)
+        self.assertEqual(statuses[30], 429)
+
+
+class SharedCacheTests(TestCase):
+    def test_incr_keeps_the_original_expiry(self):
+        cache.add("teller", 0, timeout=3600)
+        self.assertEqual(cache.incr("teller"), 1)
+        self.assertEqual(cache.incr("teller", 2), 3)
+        from django.db import connection
+
+        with connection.cursor() as c:
+            c.execute(f"SELECT expires FROM {cache._table}")
+            (expires,) = c.fetchone()
+        if isinstance(expires, str):  # SQLite
+            from django.utils.dateparse import parse_datetime
+            expires = parse_datetime(expires)
+        remaining = (expires.replace(tzinfo=None) - timezone.now().replace(tzinfo=None)).total_seconds()
+        self.assertGreater(remaining, 3500, "Django's eigen incr zou hem op 300 s zetten")
+
+    def test_incr_on_missing_or_expired_key_raises(self):
+        with self.assertRaises(ValueError):
+            cache.incr("bestaat-niet")
+        cache.set("verlopen", 1, timeout=-1)
+        with self.assertRaises(ValueError):
+            cache.incr("verlopen")

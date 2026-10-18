@@ -28,6 +28,7 @@ from .serializers import AccountSerializer, RequestCodeSerializer, VerifyCodeSer
 
 # Maximaal aantal codes per e-mailadres per uur (naast de throttle per IP).
 CODES_PER_EMAIL_PER_HOUR = 5
+REVIEW_FAILURES_KEY = "review-account-failures"
 
 
 def error(code: str, detail: str, http_status: int) -> Response:
@@ -66,6 +67,7 @@ class RequestCodeView(APIView):
         if user is None:
             if not display_name:
                 # De app toont dan het aanmeldformulier met schermnaam.
+                detections.unknown_address(request, email)
                 return error("account_not_found", "Er is nog geen account met dit e-mailadres.",
                              status.HTTP_404_NOT_FOUND)
             user = User.objects.create_user(email=email, display_name=display_name)
@@ -81,6 +83,7 @@ class RequestCodeView(APIView):
         send_login_code(user, code)
         cache.add(key, 0, timeout=3600)
         cache.incr(key)
+        detections.login_code_sent(request, new_account=not user.is_verified)
         return Response({"sent": True, "newAccount": not user.is_verified}, status=status.HTTP_202_ACCEPTED)
 
 
@@ -98,8 +101,15 @@ class VerifyCodeView(APIView):
         if is_review_account(email):
             user = User.objects.filter(email=email, is_active=True).first()
             code = data.validated_data["code"].strip()
+            # De vaste code verandert niet: na te veel fouten gaat het account
+            # voor de rest van het uur dicht, ook voor de goede code.
+            if cache.get(REVIEW_FAILURES_KEY, 0) >= settings.REVIEW_ACCOUNT_MAX_FAILURES:
+                detections.login_failed(request, email, user)
+                return error("too_many_attempts", "Te vaak een verkeerde code. Probeer het over een uur opnieuw.",
+                             status.HTTP_400_BAD_REQUEST)
             if user is None or not hmac.compare_digest(code, settings.REVIEW_ACCOUNT_CODE):
-                # Vaste code zonder pogingenlimiet: juist hier meetellen.
+                cache.add(REVIEW_FAILURES_KEY, 0, timeout=3600)
+                cache.incr(REVIEW_FAILURES_KEY)
                 detections.login_failed(request, email, user)
                 return invalid
             if not user.is_verified:
@@ -174,6 +184,9 @@ class InviteCodeView(APIView):
     uit te nodigen zonder je e-mailadres te kennen. Elke aanvraag geeft een
     nieuwe code; de vorige vervalt.
     """
+
+    throttle_classes = [ReportingScopedRateThrottle]
+    throttle_scope = "invite"
 
     def post(self, request):
         if not request.user.is_verified:
