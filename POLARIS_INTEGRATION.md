@@ -162,7 +162,10 @@ Status:
 
 - [x] Alert endpoint `…621e`: 11 test events sent on 2026-10-17, accepted
       (HTTP 202, `captured_payload` 53440).
-- [ ] Two detections added in API v0.6.0 (`abuse.login-code-volume`,
-      `account.login-enumeration`): send their test events after the deploy.
+- [x] Two detections added in API v0.6.0 (`abuse.login-code-volume`,
+      `account.login-enumeration`): 13 test events sent from the pod on 2026-10-18,
+      accepted (HTTP 202, `captured_payload` 63056). The first attempt was blocked by the
+      BunkerWeb WAF (CRS rule 942151 on `is_superuser (`); `/api/ingest/` is now
+      excluded from ModSecurity on the Polaris side.
 - [ ] Asset endpoint `…f440`: snapshot to be sent from the pod after the first deploy
       with this integration.
