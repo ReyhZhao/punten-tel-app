@@ -19,7 +19,7 @@ api:
   enabled: true
   image:
     repository: registry.vels.online/punten/api
-    tag: v0.5.0
+    tag: v0.6.0
     pullPolicy: Always
   # Eén replica: de migraties draaien als initContainer en mogen niet dubbel
   # draaien. De rate limiting gebruikt een cache in PostgreSQL en werkt dus wel
