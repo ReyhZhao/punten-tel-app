@@ -51,7 +51,8 @@ checklist staan in [`app-store.md`](app-store.md).
 - [x] Privacy-manifest (`PrivacyInfo.xcprivacy`)
 - [x] Screenshots 6,9", beschrijving NL/EN, trefwoorden, privacylabel, leeftijdsclassificatie (`app-store.md`)
 - [x] Review-account met vaste code (backend)
-- [ ] Review-code in Vault en `api.review.email` invullen; PWA en API uitrollen
+- [x] `api.review.email`, APNs-sleutel; PWA en API uitgerold
+- [ ] Review-code in Vault controleren (inloggen in TestFlight-build)
 - [ ] Ter review indienen
 
 ## Fase 3 — Sync (zie `backend/README.md`, ADR-0003)
@@ -71,5 +72,5 @@ checklist staan in [`app-store.md`](app-store.md).
 - [x] Spelers uitnodigen in een lopend spel, "Alle spelers mogen scores invoeren" en eigenaar overdragen (Spelers en delen)
 - [x] Realtime updates via SSE (`docs/research/sse-realtime-updates.md`)
 - [x] Pushmeldingen (APNs): uitgenodigd, spel afgelopen, overdracht; tik opent het spel
-- [ ] APNs-sleutel in Vault en `api.push.keyId` invullen (zie `backend/README.md`)
+- [x] APNs-sleutel in Vault en `api.push.keyId` invullen (zie `backend/README.md`)
 - [ ] Web Push voor de PWA (optioneel)
