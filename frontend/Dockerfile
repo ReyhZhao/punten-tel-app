@@ -1,5 +1,5 @@
 # ── Stage 1: Build ────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:25-alpine AS builder
 
 WORKDIR /app
 
@@ -12,7 +12,7 @@ COPY . .
 RUN npm run build
 
 # ── Stage 2: Serve ────────────────────────────────────────────────
-FROM nginx:1.27-alpine
+FROM nginx:1.29-alpine
 
 # Replace default nginx config with SPA-aware config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
