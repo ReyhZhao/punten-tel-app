@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "games",
     "notifications",
     "polaris",
+    "dashboard",
 ]
 
 MIDDLEWARE = [

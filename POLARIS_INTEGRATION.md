@@ -136,6 +136,12 @@ What is sent:
   the ExternalSecret `backend-polaris-secret`. They are never in git, and logs show only
   the last 4 characters. To rotate a URL, update Vault; the pod picks it up on its next
   restart.
+- **Statistics page** (`/admin/statistieken/`, since API v0.7.0): a staff-only overview
+  of platform usage inside the Django admin. It shows aggregate counts only (no e-mail
+  addresses, names or game content), so it is not a bulk-data-access path and has no
+  detection of its own. Access to it goes through the same `/admin/` login, which is
+  covered by `admin.login-bruteforce`, `admin.login-after-failures` and
+  `authz.privilege-granted`.
 - **App-side contact:** eddie@vels.online
 
 ## 7. Test procedure

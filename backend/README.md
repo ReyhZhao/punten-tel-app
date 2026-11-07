@@ -17,6 +17,7 @@ backend/
   games/          # Game, Player, ScoreEntry, GameProfile, sync, uitnodigen
   notifications/  # pushmeldingen (Apple Push Notification service)
   polaris/        # beveiligingsmeldingen naar Polaris Security (SOC)
+  dashboard/      # statistiekenpagina in de Django-admin
 ```
 
 ## Lokaal ontwikkelen
@@ -33,6 +34,8 @@ export DJANGO_DEBUG=1                       # SQLite, mails in de console
 Of met PostgreSQL via Docker, vanuit de repo-root: `docker compose up api`.
 
 Beheer: `python manage.py createsuperuser`, daarna `/admin/`.
+Statistieken (accounts, spellen, gebruik per week): `/admin/statistieken/`,
+ook gelinkt vanaf de startpagina van de admin.
 
 ## API (v1)
 

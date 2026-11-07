@@ -1,0 +1,78 @@
+{% extends "admin/base_site.html" %}
+{% block extrastyle %}{{ block.super }}
+<style>
+  .pt-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:12px; margin:0 0 24px; }
+  .pt-tile { border:1px solid var(--hairline-color); border-radius:6px; padding:12px 14px; background:var(--body-bg); }
+  .pt-tile .n { font-size:1.9rem; font-weight:600; line-height:1.2; color:var(--body-fg); font-variant-numeric:tabular-nums; }
+  .pt-tile .l { color:var(--body-quiet-color); font-size:.85rem; }
+  .pt-tile .s { color:var(--body-quiet-color); font-size:.8rem; margin-top:4px; }
+  .pt-section { margin:8px 0 10px; font-size:1.05rem; }
+  .pt-charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; margin-bottom:24px; }
+  .pt-chart { border:1px solid var(--hairline-color); border-radius:6px; padding:12px 14px; }
+  .pt-chart h3 { margin:0 0 10px; font-size:.95rem; color:var(--body-fg); background:none; padding:0; text-transform:none; }
+  .pt-bars { display:flex; align-items:flex-end; gap:3px; height:120px; border-bottom:1px solid var(--hairline-color); }
+  .pt-bar { flex:1; display:flex; flex-direction:column; justify-content:flex-end; height:100%; }
+  .pt-bar span { display:block; background:var(--primary); border-radius:2px 2px 0 0; min-height:1px; }
+  .pt-axis { display:flex; justify-content:space-between; color:var(--body-quiet-color); font-size:.75rem; margin-top:4px; }
+  .pt-note { color:var(--body-quiet-color); font-size:.8rem; }
+</style>
+{% endblock %}
+{% block breadcrumbs %}
+<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Start</a> &rsaquo; Statistieken</div>
+{% endblock %}
+{% block content %}
+{% with a=stats.accounts g=stats.games p=stats.seats sc=stats.scoring dv=stats.devices %}
+<h2 class="pt-section">Accounts</h2>
+<div class="pt-grid">
+  <div class="pt-tile"><div class="l">Accounts</div><div class="n">{{ a.total }}</div><div class="s">{{ a.verified }} bevestigd · {{ a.inactive }} gedeactiveerd</div></div>
+  <div class="pt-tile"><div class="l">Actief, 24 uur</div><div class="n">{{ a.active_1d }}</div></div>
+  <div class="pt-tile"><div class="l">Actief, 7 dagen</div><div class="n">{{ a.active_7d }}</div></div>
+  <div class="pt-tile"><div class="l">Actief, 30 dagen</div><div class="n">{{ a.active_30d }}</div></div>
+  <div class="pt-tile"><div class="l">Nieuw, 7 dagen</div><div class="n">{{ a.new_7d }}</div><div class="s">{{ a.new_30d }} in 30 dagen</div></div>
+  <div class="pt-tile"><div class="l">Ingelogde toestellen</div><div class="n">{{ dv.tokens }}</div><div class="s">push: {{ dv.push_production }} productie · {{ dv.push_sandbox }} sandbox</div></div>
+</div>
+
+<h2 class="pt-section">Spellen</h2>
+<div class="pt-grid">
+  <div class="pt-tile"><div class="l">Spellen</div><div class="n">{{ g.total }}</div><div class="s">{{ g.in_progress }} bezig · {{ g.finished }} afgerond</div></div>
+  <div class="pt-tile"><div class="l">Gespeeld, 7 dagen</div><div class="n">{{ g.active_7d }}</div><div class="s">bijgewerkt in de laatste week</div></div>
+  <div class="pt-tile"><div class="l">Nieuw, 7 dagen</div><div class="n">{{ g.new_7d }}</div><div class="s">{{ g.new_30d }} in 30 dagen</div></div>
+  <div class="pt-tile"><div class="l">Gedeelde spellen</div><div class="n">{{ g.shared }}</div><div class="s">met een uitgenodigd account</div></div>
+  <div class="pt-tile"><div class="l">Accounts met spellen</div><div class="n">{{ g.owners }}</div><div class="s">{{ p.accounts_in_games }} als gekoppelde speler</div></div>
+  <div class="pt-tile"><div class="l">Spelprofielen</div><div class="n">{{ g.profiles }}</div><div class="s">{{ g.deleted }} spellen verwijderd</div></div>
+</div>
+
+<h2 class="pt-section">Aan tafel</h2>
+<div class="pt-grid">
+  <div class="pt-tile"><div class="l">Spelers in spellen</div><div class="n">{{ p.total }}</div><div class="s">{{ p.linked }} gekoppeld aan een account</div></div>
+  <div class="pt-tile"><div class="l">Gemiddeld per spel</div><div class="n">{{ p.avg_per_game }}</div><div class="s">spelers</div></div>
+  <div class="pt-tile"><div class="l">Boekingen</div><div class="n">{{ sc.total }}</div><div class="s">{{ sc.last_7d }} in 7 dagen · {{ sc.undone }} ongedaan</div></div>
+</div>
+{% endwith %}
+
+<h2 class="pt-section">Per week (laatste 12 weken)</h2>
+<div class="pt-charts">
+  {% for label, weeks in stats.weekly %}
+  <div class="pt-chart">
+    <h3>{{ label }}</h3>
+    <div class="pt-bars">
+      {% for w in weeks %}<div class="pt-bar" title="week van {{ w.start|date:'j M' }}: {{ w.value }}"><span style="height:{{ w.pct }}%"></span></div>{% endfor %}
+    </div>
+    <div class="pt-axis"><span>{{ weeks.0.start|date:"j M" }}</span>{% with cur=weeks|last %}<span>deze week: {{ cur.value }}</span>{% endwith %}</div>
+  </div>
+  {% endfor %}
+  <div class="pt-chart">
+    <h3>Spelers per spel</h3>
+    <div class="pt-bars">
+      {% for b in stats.size_dist %}<div class="pt-bar" title="{{ b.label }} spelers: {{ b.value }} spellen"><span style="height:{{ b.pct }}%"></span></div>{% endfor %}
+    </div>
+    <div class="pt-axis">{% for b in stats.size_dist %}<span>{{ b.label }}</span>{% endfor %}</div>
+  </div>
+</div>
+
+<p class="pt-note">
+  Bijgewerkt {{ stats.generated_at|date:"j F Y, H:i" }}. Beheerders tellen niet mee als account.
+  "Actief" betekent: de app heeft in die periode de API gebruikt met een login-token (per uur nauwkeurig).
+  Verwijderde spellen tellen nergens mee behalve bij "verwijderd". Tijdstippen van spellen en boekingen komen van de klok van het toestel.
+</p>
+{% endblock %}
