@@ -1,6 +1,6 @@
 image:
   repository: registry.vels.online/punten/app
-  tag: v1.8.0
+  tag: v1.9.0
   pullPolicy: Always
 # registry.vels.online vereist inloggen; de Secret komt uit Vault
 # (kv/puntenteller, REGISTRY_USERNAME/REGISTRY_PASSWORD), zie
