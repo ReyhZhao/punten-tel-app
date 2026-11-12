@@ -1,15 +1,20 @@
 import SwiftUI
 import PuntentellerKit
 
-/// Bewaarde spelers op aantal overwinningen, totaal of per spelprofiel
-/// (zie `screens/PlayersScreen.tsx`).
+/// Bewaarde spelers op aantal overwinningen, totaal of per spelprofiel, of de
+/// historie van afgeronde spellen met ieders punten (zie `screens/PlayersScreen.tsx`).
 struct PlayersView: View {
+    enum Mode: Hashable { case wins, history }
+
     @Environment(GameStore.self) private var store
     @Environment(SyncEngine.self) private var sync
     @AppStorage(Preferences.myPlayerId) private var myPlayerId = ""
     @Environment(\.dismiss) private var dismiss
     /// nil = totaal over alle spellen.
     @State private var profileId: UUID?
+    @State private var mode: Mode = .wins
+    /// Opengeklapte spellen in de historie.
+    @State private var expanded: Set<UUID> = []
 
     var body: some View {
         let board = store.leaderboard(profileId: profileId)
@@ -35,6 +40,15 @@ struct PlayersView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
 
+            Picker("Overzicht", selection: $mode) {
+                Text("Wins").tag(Mode.wins)
+                Text("Historie").tag(Mode.history)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 20)
+            .padding(.top, 4)
+            .padding(.bottom, 2)
+
             if !store.profiles.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -46,7 +60,9 @@ struct PlayersView: View {
                 }
             }
 
-            if board.isEmpty {
+            if mode == .history {
+                historyList(store.history(profileId: profileId))
+            } else if board.isEmpty {
                 ContentUnavailableView {
                     Label("Nog geen spelers", systemImage: "person")
                 } description: {
@@ -72,6 +88,105 @@ struct PlayersView: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
+    }
+
+    // MARK: - Historie
+
+    @ViewBuilder
+    private func historyList(_ games: [Game]) -> some View {
+        if games.isEmpty {
+            ContentUnavailableView {
+                Label("Nog geen afgeronde spellen", systemImage: "clock.arrow.circlepath")
+            } description: {
+                Text("Zodra een spel afgelopen is, zie je hier wie won en hoeveel punten iedereen had.")
+            }
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 9) {
+                    SectionLabel("\(games.count) \(games.count == 1 ? "spel" : "spellen")")
+                        .padding(.leading, 4)
+                    ForEach(games) { historyCard($0) }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+            }
+        }
+    }
+
+    private func historyCard(_ game: Game) -> some View {
+        let isOpen = expanded.contains(game.id)
+        let winner = game.winner
+        return VStack(alignment: .leading, spacing: 10) {
+            Button {
+                withAnimation(.snappy) {
+                    if isOpen { expanded.remove(game.id) } else { expanded.insert(game.id) }
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(game.name)
+                            .font(Theme.display(17))
+                            .foregroundStyle(Theme.text)
+                            .lineLimit(1)
+                        Text((game.finishedAt ?? game.lastPlayed).formatted(.dateTime.day().month(.abbreviated).year()))
+                            .font(.system(size: 12.5))
+                            .foregroundStyle(Theme.muted)
+                    }
+                    Spacer(minLength: 8)
+                    if let winner {
+                        HStack(spacing: 6) {
+                            Image(systemName: "trophy.fill")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Theme.gold)
+                            Text(winner.name)
+                                .font(Theme.display(15))
+                                .foregroundStyle(Theme.text)
+                                .lineLimit(1)
+                            Text("\(game.score(of: winner.id))")
+                                .font(Theme.display(22, weight: .bold))
+                                .monospacedDigit()
+                                .foregroundStyle(Theme.accent)
+                        }
+                    }
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.muted)
+                        .rotationEffect(.degrees(isOpen ? 180 : 0))
+                }
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint(isOpen ? "Verberg de punten" : "Toon de punten van alle spelers")
+
+            if isOpen {
+                VStack(spacing: 6) {
+                    ForEach(Array(game.ranked.enumerated()), id: \.element.id) { i, player in
+                        HStack(spacing: 10) {
+                            Text("\(i + 1)")
+                                .font(Theme.display(13))
+                                .foregroundStyle(Theme.muted)
+                                .frame(width: 18)
+                            PlayerAvatar(player, size: 26)
+                            Text(player.name)
+                                .font(.system(size: 15))
+                                .foregroundStyle(Theme.text)
+                                .lineLimit(1)
+                            Spacer()
+                            Text("\(game.score(of: player.id))")
+                                .font(Theme.display(16, weight: .bold))
+                                .monospacedDigit()
+                                .foregroundStyle(i == 0 ? Theme.accent : Theme.text)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+                .padding(.top, 2)
+                .transition(.opacity)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 11)
+        .card(radius: Theme.Radius.row)
     }
 
     private func scopeChip(_ title: String, id: UUID?) -> some View {

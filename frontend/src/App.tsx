@@ -35,7 +35,7 @@ export default function App() {
 
   let content: React.ReactNode;
   if (screen === 'players') {
-    content = <PlayersScreen theme={theme} actions={actions} savedPlayers={st.savedPlayers ?? []} gameProfiles={st.gameProfiles ?? []} me={me} />;
+    content = <PlayersScreen theme={theme} actions={actions} savedPlayers={st.savedPlayers ?? []} gameProfiles={st.gameProfiles ?? []} games={games} me={me} />;
   } else if (screen === 'new') {
     content = <NewGameScreen theme={theme} actions={actions} savedPlayers={st.savedPlayers ?? []} gameProfiles={st.gameProfiles ?? []} me={me} />;
   } else if (screen === 'scoring' && current) {

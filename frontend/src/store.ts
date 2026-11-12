@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AppState, EndMode, Game, GameDraft, GameProfile, LogEntry, SavedPlayer, SyncState } from './types';
+import { AppState, EndMode, Game, GameDraft, GameProfile, LogEntry, Player, SavedPlayer, SyncState } from './types';
 import { PLAYER_COLORS } from './theme';
 import { derivedId, isUuid, newId } from './ids';
 
@@ -36,6 +36,21 @@ export function relTime(ts: number): string {
 
 /** Boekingen die nog meetellen (zonder ingetrokken). */
 export const activeLog = (g: Game): LogEntry[] => g.log.filter((e) => !e.undoneAt);
+
+/** Spelers op stand: oplopend bij `low`, aflopend bij `high`; bij gelijke stand de invoervolgorde. */
+export const rankedPlayers = (g: Game): Player[] =>
+  g.players
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => (a.p.score !== b.p.score
+      ? (g.scoring === 'low' ? a.p.score - b.p.score : b.p.score - a.p.score)
+      : a.i - b.i))
+    .map(({ p }) => p);
+
+/** Afgeronde, niet-verwijderde spellen, nieuwste eerst; optioneel alleen één profiel. */
+export const gameHistory = (games: Game[], profileId: string | null = null): Game[] =>
+  games
+    .filter((g) => g.finished && !g.deletedAt && (profileId == null || g.profileId === profileId))
+    .sort((a, b) => b.lastPlayed - a.lastPlayed);
 
 /** Zet `player.score` gelijk aan de som van de actieve boekingen. */
 export function recompute(g: Game): Game {

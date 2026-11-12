@@ -92,4 +92,25 @@ import Testing
         let golf = Statistics.leaderboard(data.savedPlayers, in: data.games, profileId: profile.id)
         #expect(golf.map(\.player.name) == ["Cas", "anna", "Bram"])
     }
+
+    @Test func historyListsFinishedGamesNewestFirst() {
+        var data = AppData()
+        let profile = data.saveProfile(name: "Golf", rules: GameRules())
+        let t0 = Date(timeIntervalSince1970: 0)
+        let old = data.startGame(name: "Golf", rules: GameRules(), playerNames: ["Anna", "Bram"], profileId: profile.id)
+        data.updateGame(old.id) { $0.applyScore(7, to: $0.players[1].id, at: t0); $0.finish(at: t0) }
+        let new = data.startGame(name: "Yahtzee", rules: GameRules(), playerNames: ["Anna", "Bram"])
+        data.updateGame(new.id) { $0.applyScore(3, to: $0.players[0].id, at: t0); $0.finish(at: t0.addingTimeInterval(60)) }
+        let running = data.startGame(name: "Golf", rules: GameRules(), playerNames: ["Anna"], profileId: profile.id)
+        let gone = data.startGame(name: "Golf", rules: GameRules(), playerNames: ["Anna"], profileId: profile.id)
+        data.updateGame(gone.id) { $0.finish(at: t0); $0.deletedAt = t0 }
+
+        let all = Statistics.history(in: data.games)
+        #expect(all.map(\.id) == [new.id, old.id])
+        #expect(!all.contains { $0.id == running.id })
+        let golf = Statistics.history(in: data.games, profileId: profile.id)
+        #expect(golf.map(\.id) == [old.id])
+        #expect(golf[0].winner?.name == "Bram")
+        #expect(golf[0].score(of: golf[0].winner!.id) == 7)
+    }
 }

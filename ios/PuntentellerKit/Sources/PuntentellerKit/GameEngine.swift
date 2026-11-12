@@ -179,4 +179,15 @@ public enum Statistics {
                 return a.player.name.compare(b.player.name, options: .caseInsensitive, locale: nl) == .orderedAscending
             }
     }
+
+    /// Afgeronde spellen, nieuwste eerst, totaal of voor één profiel. Voor het
+    /// historisch overzicht bij Spelers: per spel de winnaar en ieders punten.
+    public static func history(in games: [Game], profileId: UUID? = nil) -> [Game] {
+        games
+            .filter { g in
+                guard !g.isDeleted, g.isFinished else { return false }
+                return profileId == nil || g.profileId == profileId
+            }
+            .sorted { ($0.finishedAt ?? $0.lastPlayed) > ($1.finishedAt ?? $1.lastPlayed) }
+    }
 }

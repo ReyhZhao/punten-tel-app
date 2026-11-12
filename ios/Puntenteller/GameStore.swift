@@ -169,6 +169,10 @@ final class GameStore {
         Statistics.leaderboard(data.savedPlayers, in: data.games, profileId: profileId)
     }
 
+    func history(profileId: UUID?) -> [Game] {
+        Statistics.history(in: data.games, profileId: profileId)
+    }
+
     /// Importeert een export van de web-app. Werkt met bestanden uit de
     /// bestandskiezer (security-scoped) en uit het deelmenu ("Open in").
     func importPWAExport(from url: URL) throws -> PWAImportSummary {
