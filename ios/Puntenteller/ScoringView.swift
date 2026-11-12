@@ -36,7 +36,7 @@ private struct ScoringContent: View {
     @Environment(GameStore.self) private var store
     @Environment(SyncEngine.self) private var sync
     @Environment(\.dismiss) private var dismiss
-    @State private var amount: Int? = 1
+    @State private var amount: Int?
     @State private var confirmLeave = false
     @State private var showSharing = false
     @State private var leaveError: String?
@@ -336,7 +336,7 @@ private struct ScoringContent: View {
             try? await Task.sleep(for: .milliseconds(900))
             floats.removeAll { $0.id == entry.id }
         }
-        amount = 0
+        amount = nil
         // Door naar de volgende speler in invoervolgorde, zoals de PWA; of
         // terug naar je eigen speler bij invoer op eigen speler.
         if let own = ownInputPlayer {
